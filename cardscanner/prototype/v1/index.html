@@ -110,6 +110,41 @@
         </div>
     </div>
     
+    <!-- Settings Button -->
+    <button id="settings-btn" class="settings-btn" title="Einstellungen">⚙️</button>
+    
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Einstellungen</h3>
+                <button class="modal-close" id="close-settings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>riftbound.gg Login</h4>
+                    <p class="settings-hint">Token aus DevTools (Application → Cookies) kopieren</p>
+                    
+                    <div class="form-group">
+                        <label for="dotgg-user">User ID:</label>
+                        <input type="text" id="dotgg-user" placeholder="z.B. 109293">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dotgg-token">Token:</label>
+                        <input type="password" id="dotgg-token" placeholder="z.B. fda78958">
+                    </div>
+                    
+                    <div class="settings-status" id="settings-status"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-settings" class="btn btn-primary">Speichern</button>
+                <button id="test-connection" class="btn btn-secondary">Verbindung testen</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Ergebnis Overlay -->
     <div id="card-result-overlay" class="card-overlay hidden">
         <div class="card-overlay-content">
