@@ -1,0 +1,6 @@
+# Bilder und Testdaten
+*.jpg
+*.jpeg
+*.png
+*.json
+!*.gitkeep

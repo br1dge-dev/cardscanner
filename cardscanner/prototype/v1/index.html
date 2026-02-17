@@ -64,6 +64,13 @@
                     <span id="ocr-confidence" class="confidence-badge"></span>
                 </div>
                 <div id="ocr-text" class="ocr-text-content"></div>
+                <div class="ocr-copy-container">
+                    <button id="copy-btn" class="btn-copy">
+                        <span class="copy-icon">📋</span>
+                        <span id="copy-text">Kopieren</span>
+                    </button>
+                    <span id="copy-feedback" class="copy-feedback">✓ Kopiert!</span>
+                </div>
             </div>
             
             <!-- OCR Fehler -->
@@ -74,10 +81,66 @@
                 </div>
             </div>
             
+            <!-- Karten-Identifikation -->
+            <div id="card-identify-container" class="hidden">
+                <button id="identify-btn" class="btn-identify">
+                    <span class="identify-icon">🎯</span>
+                    Karte identifizieren
+                </button>
+                <div id="identify-loading" class="hidden">
+                    <div class="spinner-small"></div>
+                    <p>Suche in Datenbank...</p>
+                </div>
+            </div>
+            
+            <!-- Suchergebnisse -->
+            <div id="search-results" class="hidden">
+                <h3>🔍 Gefundene Karten</h3>
+                <div id="results-list"></div>
+            </div>
+            
             <div class="preview-actions">
                 <button id="retake-btn" class="btn-secondary">Neu aufnehmen</button>
                 <button id="save-btn" class="btn-primary">Speichern</button>
+                <button id="download-btn" class="btn-download">
+                    <span class="download-icon">⬇️</span>
+                    Bild herunterladen
+                </button>
             </div>
+        </div>
+    </div>
+    
+    <!-- Ergebnis Overlay -->
+    <div id="card-result-overlay" class="card-overlay hidden">
+        <div class="card-overlay-content">
+            <button class="card-overlay-close" id="close-overlay">&times;</button>
+            <h3 class="card-result-title">🔍 Gefundene Karten</h3>
+            
+            <div class="card-main-result">
+                <div class="card-result-image">
+                    <img id="result-card-image" src="" alt="Gefundene Karte">
+                </div>
+                <div class="card-result-info">
+                    <h3 id="result-card-name"></h3>
+                    <p class="card-result-set" id="result-card-set"></p>
+                    <p class="card-result-number" id="result-card-number"></p>
+                    <p class="card-result-price" id="result-card-price"></p>
+                    <div class="match-score" id="result-match-score">
+                        <span class="match-percent"></span>
+                        <div class="match-bar"><div class="match-fill"></div></div>
+                    </div>
+                    <div class="match-breakdown" id="match-breakdown"></div>
+                </div>
+            </div>
+            
+            <div class="card-alternatives" id="card-alternatives"></div>
+            
+            <div class="card-result-actions">
+                <button id="save-card-btn" class="btn btn-primary">Das ist es!</button>
+                <button id="next-match-btn" class="btn btn-secondary hidden">Nächster Treffer</button>
+            </div>
+            
+            <div class="card-result-counter hidden" id="result-counter"></div>
         </div>
     </div>
     

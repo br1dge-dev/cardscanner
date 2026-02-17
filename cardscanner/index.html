@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riftbound Card Scanner - OCR Vergleich</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        /* Upload Bereich */
+        .upload-section {
+            background: rgba(255,255,255,0.05);
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+
+        .upload-section:hover {
+            border-color: #00d4ff;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .upload-section.dragover {
+            border-color: #7b2cbf;
+            background: rgba(123, 44, 191, 0.1);
+        }
+
+        .upload-btn {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 15px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* OCR Engine Auswahl */
+        .engine-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .engine-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.05);
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .engine-option:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .engine-option.active {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .engine-option input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .engine-option label {
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .engine-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .engine-badge.js {
+            background: #f7df1e;
+            color: #000;
+        }
+
+        .engine-badge.webgl {
+            background: #00d4ff;
+            color: #000;
+        }
+
+        /* Scan Button */
+        .scan-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .scan-btn {
+            background: linear-gradient(90deg, #00ff88, #00d4ff);
+            border: none;
+            color: #000;
+            padding: 15px 50px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .scan-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.4);
+        }
+
+        .scan-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .scan-btn.scanning {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+            50% { box-shadow: 0 0 0 20px rgba(0, 255, 136, 0); }
+        }
+
+        /* Vergleichsansicht */
+        .comparison-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .result-card.hidden {
+            display: none;
+        }
+
+        .result-header {
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .result-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+
+        .result-status.loading {
+            background: #ffa500;
+            color: #000;
+        }
+
+        .result-status.success {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .result-status.error {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .result-time {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .result-content {
+            padding: 20px;
+        }
+
+        .result-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #000;
+        }
+
+        .result-text {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .result-text.empty {
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Zusammenfassung */
+        .summary-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .summary-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .comparison-table th {
+            color: #888;
+            font-weight: 500;
+        }
+
+        .winner {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        /* Test Images */
+        .test-images {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+        }
+
+        .test-images h3 {
+            margin-bottom: 15px;
+            color: #888;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .test-image-grid {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .test-image-item {
+            width: 150px;
+            height: 200px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .test-image-item:hover {
+            border-color: #00d4ff;
+            transform: scale(1.05);
+        }
+
+        .test-image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .loading-subtext {
+            color: #888;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 300px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            border-radius: 2px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .comparison-view {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 Riftbound Card Scanner</h1>
+        <p class="subtitle">OCR-Engine Vergleich: Tesseract.js vs PaddleOCR</p>
+
+        <!-- Upload Bereich -->
+        <div class="upload-section" id="dropZone">
+            <p>📷 Kartenbild per Drag & Drop hier ablegen</p>
+            <p style="color: #888; font-size: 13px; margin-top: 10px;">oder</p>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Bild auswählen
+            </button>
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+        </div>
+
+        <!-- OCR Engine Auswahl -->
+        <div class="engine-selector">
+            <div class="engine-option active" data-engine="tesseract">
+                <input type="checkbox" id="useTesseract" checked>
+                <label for="useTesseract">Tesseract.js</label>
+                <span class="engine-badge js">JS</span>
+            </div>
+            <div class="engine-option active" data-engine="paddle">
+                <input type="checkbox" id="usePaddle" checked>
+                <label for="usePaddle">PaddleOCR</label>
+                <span class="engine-badge webgl">WebGL</span>
+            </div>
+        </div>
+
+        <!-- Scan Button -->
+        <div class="scan-section">
+            <button class="scan-btn" id="scanBtn" disabled>
+                <span>🔍</span> OCR Starten
+            </button>
+        </div>
+
+        <!-- Vergleichsansicht -->
+        <div class="comparison-view" id="comparisonView">
+            <!-- Tesseract Ergebnis -->
+            <div class="result-card hidden" id="tesseractCard">
+                <div class="result-header">
+                    <div class="result-title">
+                        📝 Tesseract.js
+                    </div>
+                    <span class="result-status" id="tesseractStatus">Wartet...</span>
+                </div>
+                <div class="result-content">
+                    <img class="result-image" id="tesseractImage" style="display: none;">
+                    <div class="result-text empty" id="tesseractText">Noch kein Ergebnis</div>
+                    <div class="result-time" id="tesseractTime"></div>
+                </div>
+            </div>
+
+            <!-- PaddleOCR Ergebnis -->
+            <div class="result-card hidden" id="paddleCard">
+                <div class="result-header">
+                    <div class="result-title">
+                        🎯 PaddleOCR
+                    </div>
+                    <span class="result-status" id="paddleStatus">Wartet...</span>
+                </div>
+                <div class="result-content">
+                    <img class="result-image" id="paddleImage" style="display: none;">
+                    <div class="result-text empty" id="paddleText">Noch kein Ergebnis</div>
+                    <div class="result-time" id="paddleTime"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zusammenfassung -->
+        <div class="summary-section" id="summarySection" style="display: none;">
+            <h3 class="summary-title">📊 Vergleichsergebnis</h3>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Engine</th>
+                        <th>Erkennungszeit</th>
+                        <th>Textlänge</th>
+                        <th>Qualität</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Testbilder -->
+        <div class="test-images">
+            <h3>🧪 Testbilder</h3>
+            <div class="test-image-grid" id="testImageGrid">
+                <!-- Wird dynamisch befüllt -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">Initialisiere...</div>
+            <div class="loading-subtext" id="loadingSubtext"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tesseract.js -->
+    <script src='https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'></script>
+    
+    <!-- PaddleOCR via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@paddlejs/paddlejs-core@2.1.0/dist/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@paddlejs-models/ocr@2.0.0/dist/index.umd.min.js"></script>
+    
+    <script src="app.js"></script>
+</body>
+</html>
