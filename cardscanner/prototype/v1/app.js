@@ -1351,5 +1351,247 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nextBtn) nextBtn.addEventListener('click', showNextMatch);
 });
 
+// ==================== SETTINGS & COLLECTION API ====================
+
+// Settings Modal Elements
+let settingsModal = null;
+let settingsBtn = null;
+
+/**
+ * Settings Modal initialisieren
+ */
+function initSettings() {
+    settingsModal = document.getElementById('settings-modal');
+    settingsBtn = document.getElementById('settings-btn');
+    
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', openSettings);
+    }
+    
+    if (settingsModal) {
+        const closeBtn = document.getElementById('close-settings');
+        const saveBtn = document.getElementById('save-settings');
+        const testBtn = document.getElementById('test-connection');
+        
+        if (closeBtn) closeBtn.addEventListener('click', closeSettings);
+        if (saveBtn) saveBtn.addEventListener('click', saveSettings);
+        if (testBtn) testBtn.addEventListener('click', testApiConnection);
+        
+        // Gespeicherte Werte laden
+        loadSettings();
+    }
+}
+
+/**
+ * Settings öffnen
+ */
+function openSettings() {
+    if (settingsModal) {
+        loadSettings();
+        settingsModal.classList.remove('hidden');
+    }
+}
+
+/**
+ * Settings schließen
+ */
+function closeSettings() {
+    if (settingsModal) {
+        settingsModal.classList.add('hidden');
+    }
+}
+
+/**
+ * Settings aus localStorage laden
+ */
+function loadSettings() {
+    const userId = localStorage.getItem('dotgg_user') || '';
+    const token = localStorage.getItem('dotgg_token') || '';
+    
+    const userInput = document.getElementById('dotgg-user');
+    const tokenInput = document.getElementById('dotgg-token');
+    
+    if (userInput) userInput.value = userId;
+    if (tokenInput) tokenInput.value = token;
+    
+    updateSettingsStatus(userId && token ? 'Token gespeichert' : 'Token erforderlich', userId && token);
+}
+
+/**
+ * Settings speichern
+ */
+function saveSettings() {
+    const userInput = document.getElementById('dotgg-user');
+    const tokenInput = document.getElementById('dotgg-token');
+    
+    const userId = userInput ? userInput.value.trim() : '';
+    const token = tokenInput ? tokenInput.value.trim() : '';
+    
+    if (userId && token) {
+        localStorage.setItem('dotgg_user', userId);
+        localStorage.setItem('dotgg_token', token);
+        updateSettingsStatus('✅ Token gespeichert!', true);
+    } else {
+        updateSettingsStatus('❌ Bitte beide Felder ausfüllen', false);
+    }
+}
+
+/**
+ * Status-Anzeige im Settings-Modal aktualisieren
+ */
+function updateSettingsStatus(message, isSuccess) {
+    const statusEl = document.getElementById('settings-status');
+    if (statusEl) {
+        statusEl.textContent = message;
+        statusEl.className = 'settings-status ' + (isSuccess ? 'success' : 'error');
+        statusEl.style.display = 'block';
+    }
+}
+
+/**
+ * API-Verbindung testen
+ */
+async function testApiConnection() {
+    const userId = localStorage.getItem('dotgg_user');
+    const token = localStorage.getItem('dotgg_token');
+    
+    if (!userId || !token) {
+        updateSettingsStatus('❌ Bitte zuerst Token speichern', false);
+        return;
+    }
+    
+    updateSettingsStatus('🔄 Teste Verbindung...', true);
+    
+    try {
+        // Test-Request: Einfache GET-Anfrage an die API
+        const response = await fetch(`https://api.dotgg.gg/cgfw/getcards?game=riftbound&ids=OGN-001`, {
+            method: 'GET',
+            headers: {
+                'Dotgguserauth': `${userId}:${token}`,
+                'Origin': 'https://riftbound.gg'
+            },
+            credentials: 'omit' // Wir senden den Auth-Header manuell
+        });
+        
+        if (response.ok) {
+            updateSettingsStatus('✅ Verbindung erfolgreich! API erreichbar.', true);
+        } else {
+            updateSettingsStatus(`❌ Fehler: ${response.status} - Token ungültig?`, false);
+        }
+    } catch (error) {
+        updateSettingsStatus(`❌ Netzwerkfehler: ${error.message}`, false);
+    }
+}
+
+/**
+ * Karte zur riftbound.gg Collection hinzufügen
+ */
+async function addToCollection(cardId, count = 1) {
+    const userId = localStorage.getItem('dotgg_user');
+    const token = localStorage.getItem('dotgg_token');
+    
+    if (!userId || !token) {
+        alert('Bitte zuerst in den Einstellungen (⚙️) den riftbound.gg Token eingeben!');
+        openSettings();
+        return false;
+    }
+    
+    try {
+        const response = await fetch('https://api.dotgg.gg/cgfw/savecollection?game=riftbound', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Dotgguserauth': `${userId}:${token}`,
+                'Origin': 'https://riftbound.gg'
+            },
+            body: JSON.stringify({
+                game: 'riftbound',
+                card: cardId,
+                type: 'standard',
+                count: count,
+                extra: 'null',
+                trade: '0',
+                wish: '0'
+            })
+        });
+        
+        if (response.ok) {
+            console.log(`✅ ${cardId} zur Collection hinzugefügt`);
+            return true;
+        } else {
+            const errorText = await response.text();
+            console.error('API Fehler:', response.status, errorText);
+            alert(`Fehler: ${response.status} - ${errorText}`);
+            return false;
+        }
+    } catch (error) {
+        console.error('Netzwerkfehler:', error);
+        alert(`Netzwerkfehler: ${error.message}`);
+        return false;
+    }
+}
+
+/**
+ * "Zu Collection hinzufügen" Button im Ergebnis-Overlay
+ */
+function initAddToCollectionButton() {
+    // Button zum Overlay hinzufügen wenn es angezeigt wird
+    const originalShowCardResult = showCardResult;
+    showCardResult = function() {
+        originalShowCardResult();
+        
+        // Button hinzufügen wenn nicht vorhanden
+        const actionsEl = document.querySelector('.card-result-actions');
+        if (actionsEl && !document.getElementById('add-to-collection-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'add-to-collection-btn';
+            btn.className = 'btn-add-collection';
+            btn.innerHTML = '📥 Zu Collection hinzufügen';
+            btn.addEventListener('click', async () => {
+                if (currentSearchResults.length === 0) return;
+                
+                const card = currentSearchResults[currentResultIndex].card;
+                btn.disabled = true;
+                btn.textContent = '🔄 Füge hinzu...';
+                
+                const success = await addToCollection(card.id, 1);
+                
+                if (success) {
+                    btn.textContent = '✅ Hinzugefügt!';
+                    btn.classList.add('added');
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.textContent = '📥 Zu Collection hinzufügen';
+                        btn.classList.remove('added');
+                    }, 2000);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '📥 Zu Collection hinzufügen';
+                }
+            });
+            
+            actionsEl.appendChild(btn);
+        }
+    };
+}
+
+// ==================== APP START ====================
+// App wird über init() gestartet (siehe oben)
+
+// Event-Listener für statische Overlay-Buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const closeBtn = document.getElementById('close-overlay');
+    const saveBtn = document.getElementById('save-card-btn');
+    const nextBtn = document.getElementById('next-match-btn');
+    
+    if (closeBtn) closeBtn.addEventListener('click', hideCardResult);
+    if (saveBtn) saveBtn.addEventListener('click', saveIdentifiedCard);
+    if (nextBtn) nextBtn.addEventListener('click', showNextMatch);
+    
+    // Settings initialisieren
+    initSettings();
+    initAddToCollectionButton();
+});
+
 // Aufräumen beim Verlassen
 window.addEventListener('beforeunload', stopCamera);
