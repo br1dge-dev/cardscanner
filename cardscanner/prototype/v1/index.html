@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Card Scanner</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Tesseract.js OCR Library -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Kamera Container -->
+        <div id="camera-container">
+            <video id="camera-stream" autoplay playsinline muted></video>
+            
+            <!-- Rahmen Overlay für Karte -->
+            <div id="card-frame">
+                <div class="corner tl"></div>
+                <div class="corner tr"></div>
+                <div class="corner bl"></div>
+                <div class="corner br"></div>
+                <div class="frame-label">Karte hier ausrichten</div>
+            </div>
+            
+            <!-- Shutter Button -->
+            <button id="shutter-btn" aria-label="Foto aufnehmen">
+                <div class="shutter-inner"></div>
+            </button>
+            
+            <!-- Kamera Fehler / Info -->
+            <div id="camera-error" class="hidden">
+                <div class="error-content">
+                    <h2>Kamera-Zugriff nicht möglich</h2>
+                    <p id="error-message">Bitte erlaube den Kamera-Zugriff in den Browser-Einstellungen.</p>
+                    <button id="retry-btn">Erneut versuchen</button>
+                </div>
+            </div>
+            
+            <!-- Lade-Indikator -->
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>Kamera wird gestartet...</p>
+            </div>
+        </div>
+        
+        <!-- Capture Preview -->
+        <div id="preview-container" class="hidden">
+            <h2>Aufgenommenes Bild</h2>
+            <canvas id="capture-canvas"></canvas>
+            
+            <!-- OCR Lade-Zustand -->
+            <div id="ocr-loading" class="hidden">
+                <div class="ocr-spinner"></div>
+                <p>OCR läuft... Text wird erkannt</p>
+            </div>
+            
+            <!-- OCR Ergebnis -->
+            <div id="ocr-result" class="hidden">
+                <div class="ocr-header">
+                    <h3>🔍 Erkannter Text</h3>
+                    <span id="ocr-confidence" class="confidence-badge"></span>
+                </div>
+                <div id="ocr-text" class="ocr-text-content"></div>
+            </div>
+            
+            <!-- OCR Fehler -->
+            <div id="ocr-error" class="hidden">
+                <div class="ocr-error-content">
+                    <span class="error-icon">⚠️</span>
+                    <p>Text konnte nicht erkannt werden. Versuche es mit besserer Beleuchtung oder halte die Karte gerade.</p>
+                </div>
+            </div>
+            
+            <div class="preview-actions">
+                <button id="retake-btn" class="btn-secondary">Neu aufnehmen</button>
+                <button id="save-btn" class="btn-primary">Speichern</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

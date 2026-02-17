@@ -1,0 +1,475 @@
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: #000;
+    color: #fff;
+}
+
+/* App Container */
+#app {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Kamera Container */
+#camera-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+/* Video Stream */
+#camera-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Card Frame Overlay */
+#card-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85vw;
+    height: calc(85vw * 1.3968); /* Verhältnis 63mm x 88mm = 1:1.3968 */
+    max-height: 70vh;
+    max-width: calc(70vh / 1.3968);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    box-shadow: 
+        0 0 0 9999px rgba(0, 0, 0, 0.6),
+        inset 0 0 20px rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
+
+/* Ecken-Markierungen */
+.corner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: #00ff88;
+    border-style: solid;
+    border-width: 0;
+    transition: all 0.3s ease;
+}
+
+.corner.tl {
+    top: -2px;
+    left: -2px;
+    border-top-width: 4px;
+    border-left-width: 4px;
+    border-top-left-radius: 12px;
+}
+
+.corner.tr {
+    top: -2px;
+    right: -2px;
+    border-top-width: 4px;
+    border-right-width: 4px;
+    border-top-right-radius: 12px;
+}
+
+.corner.bl {
+    bottom: -2px;
+    left: -2px;
+    border-bottom-width: 4px;
+    border-left-width: 4px;
+    border-bottom-left-radius: 12px;
+}
+
+.corner.br {
+    bottom: -2px;
+    right: -2px;
+    border-bottom-width: 4px;
+    border-right-width: 4px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Label im Frame */
+.frame-label {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Shutter Button */
+#shutter-btn {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+#shutter-btn:active {
+    transform: translateX(-50%) scale(0.95);
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.shutter-inner {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fff;
+    transition: all 0.15s ease;
+}
+
+#shutter-btn:active .shutter-inner {
+    transform: scale(0.9);
+    background: #00ff88;
+}
+
+/* Error Overlay */
+#camera-error {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 320px;
+}
+
+.error-content h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+    color: #ff6b6b;
+}
+
+.error-content p {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+/* Loading Spinner */
+#loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #00ff88;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Preview Container */
+#preview-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+#preview-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+#capture-canvas {
+    max-width: 100%;
+    max-height: 50vh;
+    margin: 0 auto 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* OCR Loading State */
+#ocr-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 255, 136, 0.1);
+    border-radius: 12px;
+    margin: 0 auto 16px;
+    max-width: 400px;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.ocr-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(0, 255, 136, 0.2);
+    border-top-color: #00ff88;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 12px;
+}
+
+#ocr-loading p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+}
+
+/* OCR Result */
+#ocr-result {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 0 auto 16px;
+    max-width: 400px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ocr-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ocr-header h3 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+}
+
+.confidence-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.confidence-badge.high {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+}
+
+.confidence-badge.medium {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.confidence-badge.low {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+.ocr-text-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.ocr-text-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ocr-text-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+.ocr-text-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+/* OCR Error */
+#ocr-error {
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 0 auto 16px;
+    max-width: 400px;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.ocr-error-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.error-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.ocr-error-content p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: auto;
+    padding-bottom: 20px;
+}
+
+/* Buttons */
+button {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: #00ff88;
+    color: #000;
+}
+
+.btn-primary:active {
+    background: #00cc6a;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.btn-secondary:active {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+#retry-btn {
+    background: #00ff88;
+    color: #000;
+    width: 100%;
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+/* Landscape Mode Anpassungen */
+@media (orientation: landscape) {
+    #card-frame {
+        width: 50vh;
+        height: calc(50vh * 1.3968);
+    }
+    
+    #shutter-btn {
+        right: 40px;
+        left: auto;
+        top: 50%;
+        bottom: auto;
+        transform: translateY(-50%);
+    }
+    
+    #shutter-btn:active {
+        transform: translateY(-50%) scale(0.95);
+    }
+}
+
+/* Desktop Optimierungen */
+@media (min-width: 768px) {
+    #card-frame {
+        width: 400px;
+        height: calc(400px * 1.3968);
+    }
+    
+    .frame-label {
+        font-size: 16px;
+    }
+}
+
+/* iOS Safe Area Support */
+@supports (padding-top: env(safe-area-inset-top)) {
+    #shutter-btn {
+        bottom: calc(40px + env(safe-area-inset-bottom));
+    }
+    
+    #preview-container {
+        padding-top: calc(20px + env(safe-area-inset-top));
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+}
