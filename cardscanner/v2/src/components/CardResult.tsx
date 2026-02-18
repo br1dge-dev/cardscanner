@@ -27,13 +27,31 @@ export const CardResult: React.FC<CardResultProps> = ({
         <div className="card-result-modal no-match" onClick={e => e.stopPropagation()}>
           <div className="card-result-header">
             <h3>No Match Found</h3>
-            <button className="close-btn" onClick={onClose}>
-              <X size={20} />
+            <button className="close-btn" onClick={onClose} style={{padding: '12px', minWidth: '44px', minHeight: '44px'}}>
+              <X size={24} />
             </button>
           </div>
           <div className="no-match-content">
             <AlertCircle size={48} className="no-match-icon" />
-            <p>Could not identify the card. Please try again with better lighting.</p>
+            <p>Could not identify the card.</p>
+            <p style={{fontSize: '14px', color: '#666', marginTop: '8px'}}>
+              Tip: Try better lighting or tap outside this box to close
+            </p>
+            <button 
+              onClick={onClose}
+              style={{
+                marginTop: '20px',
+                padding: '12px 24px',
+                background: '#007AFF',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer'
+              }}
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </div>

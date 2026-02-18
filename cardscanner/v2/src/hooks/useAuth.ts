@@ -3,6 +3,8 @@
  * Based on official API documentation
  */
 import { useState, useEffect, useCallback } from 'react';
+import { CapacitorHttp } from '@capacitor/core';
+import type { HttpResponse } from '@capacitor/core';
 import type { User } from '../types';
 
 const AUTH_ENDPOINT = 'https://api.dotgg.gg/email-auth-mobile.php';
@@ -44,24 +46,25 @@ export function useAuth() {
     setError(null);
 
     try {
-      // Use FormData as per API documentation
-      const formData = new URLSearchParams();
-      formData.append('email', credentials.email);
-      formData.append('password', credentials.password);
-
-      const response = await fetch(AUTH_ENDPOINT, {
-        method: 'POST',
+      console.log('Login attempt:', credentials.email);
+      console.log('Using CapacitorHttp for native request');
+      
+      // Use CapacitorHttp for native network requests (works in WebView)
+      const response: HttpResponse = await CapacitorHttp.post({
+        url: AUTH_ENDPOINT,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: formData.toString()
+        data: `email=${encodeURIComponent(credentials.email)}&password=${encodeURIComponent(credentials.password)}`
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
 
-      const data: DotGGAuthResponse = await response.json();
+      // Parse response data
+      const data: DotGGAuthResponse = typeof response.data === 'string' 
+        ? JSON.parse(response.data) 
+        : response.data;
 
       if (data.error) {
         setError(data.error);
@@ -72,20 +75,22 @@ export function useAuth() {
         const userData: User = {
           id: String(data.DotGGUser),
           email: credentials.email,
-          username: credentials.email.split('@')[0], // Use email prefix as username
+          username: credentials.email.split('@')[0],
           token: data.DotGGUserToken
         };
         
         setUser(userData);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+        console.log('Login successful, user:', userData.id);
         return true;
       } else {
-        setError('Invalid response from server');
+        setError('Invalid response from server - missing user or token');
         return false;
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
-      setError(errorMessage);
+      console.error('Login error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Network error - check connection';
+      setError(`Login failed: ${errorMessage}`);
       return false;
     } finally {
       setIsLoading(false);

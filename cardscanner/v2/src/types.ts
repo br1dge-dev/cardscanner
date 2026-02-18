@@ -57,4 +57,6 @@ export interface CollectionCard {
   quantity: number;
   condition?: string;
   language?: string;
+  trade?: number;
+  wish?: number;
 }
