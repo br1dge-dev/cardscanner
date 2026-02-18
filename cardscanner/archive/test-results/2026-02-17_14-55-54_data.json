@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-02-17_14-55-54",
+  "clientTimestamp": "2026-02-17T14:55:00Z",
+  "ocrText": "Test Card\nPower 100",
+  "confidence": 85.5,
+  "imageFilename": "2026-02-17_14-55-54_image.jpg",
+  "imagePath": "/Users/robert/.openclaw/workspace/cardscanner/test-server/../test-results/2026-02-17_14-55-54_image.jpg"
+}
