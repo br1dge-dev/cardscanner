@@ -3,22 +3,28 @@
  */
 
 export interface Card {
-  id: string;
-  name: string;
-  number: string;
-  set: string;
-  setName?: string;
+  id: string;           // Card ID like "001-001"
+  name: string;         // Card name
+  number: string;       // Card number (same as id)
+  set: string;          // Set code (OGN, SFD, OGS)
+  setName?: string;     // Full set name
+  set_code?: string;    // Alternative set code field
+  set_name?: string;    // Alternative set name field
   rarity?: string;
-  imageUrl?: string;
-  type?: string;
+  image?: string;       // Card image URL
+  imageUrl?: string;    // Alternative image field
+  type?: string;        // Card type (Spell, Unit, etc.)
+  card_type?: string;   // Alternative type field
   color?: string;
   cost?: string;
   power?: string;
   life?: string;
   attributes?: string[];
   effect?: string;
+  flavor?: string;      // Flavor text
   trigger?: string;
   counter?: string;
+  price?: number;       // Card price if available
 }
 
 export interface CardMatch {

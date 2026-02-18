@@ -1,9 +1,11 @@
 /**
  * DotGG API Client - Collection management
+ * Based on official API documentation
  */
 import type { CollectionCard, User } from '../types';
 
-const API_BASE_URL = 'https://www.dotgg.gg/api';
+const API_BASE_URL = 'https://api.dotgg.gg';
+const GAME = 'lorcana'; // Riftbound is under 'lorcana' in dot.gg
 
 interface ApiResponse<T> {
   success: boolean;
@@ -12,36 +14,45 @@ interface ApiResponse<T> {
 }
 
 interface UserData {
-  id: string;
-  email: string;
-  username: string;
-  collection: CollectionCard[];
+  user: {
+    user_id: number;
+    nickname: string;
+    user_registered: string;
+  };
+  collection: Array<{
+    card: string;      // e.g., "001-001"
+    standard: string;  // count as string
+    foil: string;
+    total: string;
+    trade: string;
+    wish: string;
+  }>;
 }
 
 class DotGGClient {
   private getAuthHeaders(user: User) {
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${user.token}`,
+      'Dotgguserauth': `${user.id}:${user.token}`,
       'Accept': 'application/json'
     };
   }
 
   async getUserData(user: User): Promise<ApiResponse<UserData>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/getuserdata`, {
+      const response = await fetch(`${API_BASE_URL}/cgfw/getuserdata?game=${GAME}`, {
         method: 'GET',
         headers: this.getAuthHeaders(user)
       });
 
       if (!response.ok) {
         if (response.status === 401) {
-          return { success: false, error: 'Unauthorized' };
+          return { success: false, error: 'Unauthorized - Invalid token' };
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: UserData = await response.json();
       return { success: true, data };
     } catch (err) {
       return { 
@@ -51,15 +62,25 @@ class DotGGClient {
     }
   }
 
-  async saveCollection(
-    user: User, 
-    cards: CollectionCard[]
-  ): Promise<ApiResponse<{ saved: number }>> {
+  async saveCard(
+    user: User,
+    cardId: string,
+    type: 'standard' | 'foil' = 'standard',
+    count: number = 1,
+    trade: number = 0,
+    wish: number = 0
+  ): Promise<ApiResponse<{ error: boolean; newCount: number }>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/savecollection`, {
+      const response = await fetch(`${API_BASE_URL}/cgfw/savecollection?game=${GAME}`, {
         method: 'POST',
         headers: this.getAuthHeaders(user),
-        body: JSON.stringify({ cards })
+        body: JSON.stringify({
+          card: cardId,
+          type,
+          count,
+          trade,
+          wish
+        })
       });
 
       if (!response.ok) {
@@ -70,11 +91,16 @@ class DotGGClient {
       }
 
       const data = await response.json();
+      
+      if (data.error) {
+        return { success: false, error: data.error_text || 'Save failed' };
+      }
+      
       return { success: true, data };
     } catch (err) {
       return { 
         success: false, 
-        error: err instanceof Error ? err.message : 'Failed to save collection' 
+        error: err instanceof Error ? err.message : 'Failed to save card' 
       };
     }
   }
@@ -82,69 +108,54 @@ class DotGGClient {
   async addCardToCollection(
     user: User,
     cardId: string,
-    quantity: number = 1,
-    condition?: string,
-    language?: string
-  ): Promise<ApiResponse<{ saved: number }>> {
-    const card: CollectionCard = {
-      cardId,
-      quantity,
-      condition,
-      language
-    };
-
-    return this.saveCollection(user, [card]);
+    quantity: number = 1
+  ): Promise<ApiResponse<{ error: boolean; newCount: number }>> {
+    return this.saveCard(user, cardId, 'standard', quantity);
   }
 
   async syncCollection(
     user: User,
     localCards: CollectionCard[]
-  ): Promise<ApiResponse<{ synced: number; conflicts: number }>> {
-    // Fetch server collection
-    const serverData = await this.getUserData(user);
-    if (!serverData.success) {
-      return { success: false, error: serverData.error };
-    }
+  ): Promise<ApiResponse<{ error: boolean; synced: number }>> {
+    // Use bulk sync endpoint
+    try {
+      const items = localCards.map(card => ({
+        card: card.cardId,
+        standard: String(card.quantity),
+        foil: '0',
+        trade: String(card.trade || 0),
+        wish: String(card.wish || 0)
+      }));
 
-    const serverCards = serverData.data?.collection || [];
+      const response = await fetch(`${API_BASE_URL}/cgfw/synclocalcollection?game=${GAME}`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(user),
+        body: JSON.stringify({ items })
+      });
 
-    // Merge collections (server wins on conflict for now)
-    const mergedMap = new Map<string, CollectionCard>();
-
-    // Add server cards first
-    for (const card of serverCards) {
-      mergedMap.set(card.cardId, card);
-    }
-
-    // Add/merge local cards
-    for (const card of localCards) {
-      const existing = mergedMap.get(card.cardId);
-      if (existing) {
-        // Merge quantities
-        mergedMap.set(card.cardId, {
-          ...existing,
-          quantity: existing.quantity + card.quantity
-        });
-      } else {
-        mergedMap.set(card.cardId, card);
+      if (!response.ok) {
+        if (response.status === 401) {
+          return { success: false, error: 'Unauthorized' };
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    }
 
-    // Save merged collection
-    const mergedCards = Array.from(mergedMap.values());
-    const saveResult = await this.saveCollection(user, mergedCards);
-
-    if (!saveResult.success) {
-      return { success: false, error: saveResult.error };
-    }
-
-    return {
-      success: true,
-      data: {
-        synced: mergedCards.length,
-        conflicts: 0 // Could track this if needed
+      const data = await response.json();
+      
+      if (data.error) {
+        return { success: false, error: data.error_text || 'Sync failed' };
       }
-    };
+      
+      return { 
+        success: true, 
+        data: { error: false, synced: data.synced || items.length }
+      };
+    } catch (err) {
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Failed to sync collection' 
+      };
+    }
   }
 }
 

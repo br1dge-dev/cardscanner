@@ -1,10 +1,11 @@
 /**
- * useAuth Hook - Authentication with email-auth-mobile.php
+ * useAuth Hook - Authentication with dot.gg email-auth-mobile.php
+ * Based on official API documentation
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { User } from '../types';
 
-const AUTH_ENDPOINT = 'https://www.dotgg.gg/auth/email-auth-mobile.php';
+const AUTH_ENDPOINT = 'https://api.dotgg.gg/email-auth-mobile.php';
 const STORAGE_KEY = 'cardscanner_user';
 
 interface LoginCredentials {
@@ -12,14 +13,9 @@ interface LoginCredentials {
   password: string;
 }
 
-interface AuthResponse {
-  success: boolean;
-  user?: {
-    id: string;
-    email: string;
-    username: string;
-  };
-  token?: string;
+interface DotGGAuthResponse {
+  DotGGUser?: number;
+  DotGGUserToken?: string;
   error?: string;
 }
 
@@ -48,38 +44,43 @@ export function useAuth() {
     setError(null);
 
     try {
+      // Use FormData as per API documentation
+      const formData = new URLSearchParams();
+      formData.append('email', credentials.email);
+      formData.append('password', credentials.password);
+
       const response = await fetch(AUTH_ENDPOINT, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
-          action: 'login',
-          email: credentials.email,
-          password: credentials.password
-        })
+        body: formData.toString()
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: AuthResponse = await response.json();
+      const data: DotGGAuthResponse = await response.json();
 
-      if (data.success && data.user && data.token) {
+      if (data.error) {
+        setError(data.error);
+        return false;
+      }
+
+      if (data.DotGGUser && data.DotGGUserToken) {
         const userData: User = {
-          id: data.user.id,
-          email: data.user.email,
-          username: data.user.username,
-          token: data.token
+          id: String(data.DotGGUser),
+          email: credentials.email,
+          username: credentials.email.split('@')[0], // Use email prefix as username
+          token: data.DotGGUserToken
         };
         
         setUser(userData);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
         return true;
       } else {
-        setError(data.error || 'Login failed');
+        setError('Invalid response from server');
         return false;
       }
     } catch (err) {
@@ -91,55 +92,10 @@ export function useAuth() {
     }
   }, []);
 
-  const register = useCallback(async (
-    credentials: LoginCredentials & { username: string }
-  ): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(AUTH_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'register',
-          email: credentials.email,
-          password: credentials.password,
-          username: credentials.username
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: AuthResponse = await response.json();
-
-      if (data.success && data.user && data.token) {
-        const userData: User = {
-          id: data.user.id,
-          email: data.user.email,
-          username: data.user.username,
-          token: data.token
-        };
-        
-        setUser(userData);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-        return true;
-      } else {
-        setError(data.error || 'Registration failed');
-        return false;
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
-      setError(errorMessage);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
+  // Note: Registration is not available via API - users must register on website
+  const register = useCallback(async (): Promise<boolean> => {
+    setError('Please register at https://riftbound.gg - then use your credentials here.');
+    return false;
   }, []);
 
   const logout = useCallback(() => {
