@@ -1,141 +1,186 @@
-# Riftbound Card Scanner - OCR Vergleich
+# Card Scanner MVP v2
 
-## Übersicht
+A mobile-first card scanning application built with Vite, React, TypeScript, and Capacitor.
 
-Diese Card Scanner App vergleicht zwei OCR-Engines für die Erkennung von Riftbound-Karten:
-- **Tesseract.js** (bestehende Lösung)
-- **PaddleOCR** (neue Alternative)
+## Features
 
-## Problem mit Tesseract.js
+- 📸 **Camera Scanning**: Real-time card scanning with ROI (Region of Interest) overlay
+- 🔍 **OCR Recognition**: Tesseract.js-powered text recognition
+- 🎯 **Smart Matching**: Fuzzy matching algorithm for card identification
+- 👤 **User Authentication**: Login/Register via DotGG API
+- 📚 **Collection Management**: Save scanned cards to your collection
+- 📱 **Mobile Ready**: iOS and Android support via Capacitor
 
-Die existierenden Testbilder zeigen, dass Tesseract.js bei Riftbound-Karten erhebliche Probleme hat:
+## Tech Stack
+
+- **Frontend**: Vite + React 19 + TypeScript
+- **Mobile**: Capacitor (iOS & Android)
+- **OCR**: Tesseract.js
+- **Styling**: CSS with CSS Variables
+- **Icons**: Lucide React
+
+## Project Structure
 
 ```
-oA — EEE ey
-Nk SIR
-I 2
-(og Vi A
-ZT PR 4
-go. 3 ', i Z4
-i Ar
-i E i ! k td
-I I ad a i
-i a FR " of A i
-—— Fr
-(9) pL sl a
-i ETN ES
-Morbid Return Ne
-(Play on your turn or in showdowns.)
-! Return a unit from your trash to your hand.
-Ul
-I "Soon, this long cruel night will end. But not yet."
-- —Viego J
-)
-OGN 170/298 Rafael Zanchetin
-Fl
+cardscanner/
+├── archive/              # Old prototype code
+├── data/
+│   └── cards.json        # Card database (744 cards)
+├── v2/                   # New React app
+│   ├── src/
+│   │   ├── api/          # API clients
+│   │   ├── components/   # React components
+│   │   ├── hooks/        # Custom hooks
+│   │   └── types.ts      # TypeScript types
+│   ├── ios/              # iOS project
+│   ├── android/          # Android project
+│   └── dist/             # Build output
+└── README.md
 ```
 
-**Probleme:**
-- Viel Noise und Artefakte
-- Zerstörte Zeichen und Wörter
-- Schlechte Erkennung von Spielkarten-Texten
+## Setup
 
-## Implementierung
+### Prerequisites
 
-### Dateien
+- Node.js 18+
+- npm or yarn
+- Xcode (for iOS)
+- Android Studio (for Android)
 
-- `index.html` - UI mit Toggle für OCR-Engines
-- `app.js` - OCR-Logik für beide Engines
+### Installation
 
-### Features
-
-1. **Engine-Auswahl**: Toggle zwischen Tesseract.js und PaddleOCR
-2. **Parallel-Vergleich**: Beide Engines laufen gleichzeitig
-3. **Fallback**: Wenn PaddleOCR fehlschlägt → automatisch Tesseract
-4. **Bildvorverarbeitung**: Optimierung für PaddleOCR
-5. **Testbilder**: Direkter Zugriff auf vorhandene Testbilder
-
-### PaddleOCR Integration
-
-```javascript
-// PaddleOCR via CDN
-createWorker('deu+eng')  // Deutsche + Englische Sprache
-
-// Erkennung mit Vorverarbeitung
-const result = await paddleOCR.recognize(processedImage);
-```
-
-## Nutzung
-
-1. Server starten:
+1. Clone the repository:
 ```bash
-cd cardscanner
-python3 -m http.server 8888
+git clone https://github.com/br1dge-dev/cardscanner.git
+cd cardscanner/v2
 ```
 
-2. Browser öffnen:
-```
-http://localhost:8888
-```
-
-3. Bild hochladen oder Testbild auswählen
-4. Beide OCR-Engines parallel ausführen
-5. Ergebnisse vergleichen
-
-## Erwartete Ergebnisse
-
-### Tesseract.js
-- ✅ Schnell (< 2s)
-- ❌ Hoher Noise bei Spielkarten
-- ❌ Probleme mit gemischten Layouts
-- ✅ Keine großen Downloads
-
-### PaddleOCR
-- ⚠️ Erstladen ~20MB Modelle
-- ✅ Besser bei unstrukturierten Texten
-- ✅ Speziell für gemischte Layouts optimiert
-- ✅ Höhere Genauigkeit bei Spielkarten
-
-## Technische Details
-
-### PaddleOCR Setup
-- **Library**: `@paddlejs-models/ocr@2.0.0`
-- **Backend**: WebGL für GPU-Beschleunigung
-- **Model-Größe**: ~20MB (einmalig laden)
-- **Sprachen**: Englisch + Deutsch (automatisch)
-
-### Bildvorverarbeitung
-- Skalierung auf max 1920px (Performance)
-- High-Quality Interpolation
-- Canvas-basierte Optimierung
-
-### Fallback-Strategie
-```javascript
-if (paddleOCRFails && !tesseractUsed) {
-    // Automatisch zu Tesseract wechseln
-    return performOCRWithTesseract(image);
-}
+2. Install dependencies:
+```bash
+npm install
 ```
 
-## To-Do / Weiterentwicklung
-
-1. **Testen**: Mit verschiedenen Kartenbildern vergleichen
-2. **Fine-Tuning**: PaddleOCR Parameter anpassen
-3. **Mobile**: Touch-Optimierung
-4. **Export**: Ergebnisse als JSON/CSV speichern
-5. **Batch**: Mehrere Karten auf einmal verarbeiten
-
-## CDN Ressourcen
-
-```html
-<!-- Tesseract.js -->
-<script src='https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'></script>
-
-<!-- PaddleOCR -->
-<script src="https://cdn.jsdelivr.net/npm/@paddlejs/paddlejs-core@2.1.0/dist/index.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@paddlejs-models/ocr@2.0.0/dist/index.umd.min.js"></script>
+3. Copy card data:
+```bash
+# cards.json is already in public/ directory
 ```
 
-## Lizenz
+## Development
 
-Für interne Nutzung im Riftbound-Projekt.
+### Web Development
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5173
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+### iOS Development
+
+```bash
+# Build web assets
+npm run build
+
+# Sync with iOS project
+npx cap sync ios
+
+# Open in Xcode
+npx cap open ios
+```
+
+### Android Development
+
+```bash
+# Build web assets
+npm run build
+
+# Sync with Android project
+npx cap sync android
+
+# Open in Android Studio
+npx cap open android
+```
+
+## Core Components
+
+### Camera
+
+- Fullscreen camera view with ROI overlay
+- Two scan regions: Card Title (upper) and Card Number (lower)
+- Real-time capture and processing
+
+### OCR Processing
+
+Uses Tesseract.js with custom ROI cropping:
+- Title ROI: 15% from left/right, 8% from top, 12% height
+- Number ROI: 10% from left/right, 82% from top, 10% height
+
+### Card Matching
+
+Fuzzy matching algorithm using Levenshtein distance:
+- Number matching (normalized, exact then fuzzy)
+- Name matching (contains and fuzzy)
+- Confidence scoring (0-1)
+
+### Authentication
+
+Connects to DotGG API:
+- Endpoint: `https://www.dotgg.gg/auth/email-auth-mobile.php`
+- Token-based authentication
+- Local storage persistence
+
+## API Integration
+
+### DotGG API
+
+```typescript
+// Get user data
+GET https://www.dotgg.gg/api/getuserdata
+Authorization: Bearer <token>
+
+// Save collection
+POST https://www.dotgg.gg/api/savecollection
+Authorization: Bearer <token>
+Body: { cards: CollectionCard[] }
+```
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npx cap sync` | Sync web assets to native projects |
+| `npx cap open ios` | Open iOS project in Xcode |
+| `npx cap open android` | Open Android project in Android Studio |
+
+## Environment Variables
+
+No environment variables required for basic setup.
+
+## Troubleshooting
+
+### Camera not working
+- Check browser permissions
+- Use HTTPS or localhost for Camera API
+- On mobile, ensure camera permissions are granted
+
+### OCR accuracy issues
+- Ensure good lighting
+- Keep card within ROI guides
+- Hold steady while capturing
+
+### Build issues
+- Clear `node_modules` and reinstall: `rm -rf node_modules && npm install`
+- Update Capacitor: `npx cap sync`
+
+## License
+
+MIT
