@@ -1,71 +1,88 @@
 /**
- * useCards Hook - Loads and provides access to card data
+ * useCards Hook - Load and manage card database
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { Card } from '../types';
 
+// Path to the cards JSON file
+const CARDS_URL = '/cards.json';
+
 export function useCards() {
   const [cards, setCards] = useState<Card[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadCards = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/cards.json');
-        if (!response.ok) {
-          throw new Error(`Failed to load cards: ${response.status}`);
-        }
-        const data = await response.json();
-        
-        // Handle both array and object with cards property
-        const cardsArray = Array.isArray(data) ? data : data.cards || [];
-        setCards(cardsArray);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load cards');
-        console.error('Error loading cards:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadCards = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
-    loadCards();
+    try {
+      const response = await fetch(CARDS_URL);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load cards: ${response.status}`);
+      }
+
+      const data: Card[] = await response.json();
+      
+      // Normalize card data for consistent access
+      const normalizedCards = data.map(card => ({
+        ...card,
+        // Ensure we have both id and number
+        number: card.number || card.id,
+        // Ensure we have set_code/setName variants
+        set_code: card.set_code || card.set,
+        set_name: card.set_name || card.setName,
+        // Ensure we have imageUrl/image variants  
+        imageUrl: card.imageUrl || card.image,
+        // Ensure we have card_type/type variants
+        card_type: card.card_type || card.type
+      }));
+      
+      setCards(normalizedCards);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load cards';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const getCardByNumber = useCallback((number: string): Card | undefined => {
-    const normalizedNumber = number.toUpperCase().replace(/\s+/g, '');
-    return cards.find(c => 
-      c.number.toUpperCase().replace(/\s+/g, '') === normalizedNumber
+  // Load cards on mount
+  useEffect(() => {
+    loadCards();
+  }, [loadCards]);
+
+  // Get card by ID
+  const getCardById = useCallback((id: string): Card | undefined => {
+    return cards.find(card => card.id === id);
+  }, [cards]);
+
+  // Get cards by set
+  const getCardsBySet = useCallback((setCode: string): Card[] => {
+    return cards.filter(card => 
+      card.set === setCode || card.set_code === setCode
     );
   }, [cards]);
 
-  const getCardsByName = useCallback((name: string): Card[] => {
-    const normalizedName = name.toLowerCase().trim();
-    return cards.filter(c => 
-      c.name.toLowerCase().includes(normalizedName)
-    );
-  }, [cards]);
-
-  const searchCards = useCallback((query: string): Card[] => {
+  // Search cards by name
+  const searchCardsByName = useCallback((query: string): Card[] => {
     const normalizedQuery = query.toLowerCase().trim();
     if (!normalizedQuery) return [];
     
-    return cards.filter(c => 
-      c.name.toLowerCase().includes(normalizedQuery) ||
-      c.number.toLowerCase().includes(normalizedQuery) ||
-      c.set.toLowerCase().includes(normalizedQuery)
-    ).slice(0, 20); // Limit results
+    return cards.filter(card => 
+      card.name.toLowerCase().includes(normalizedQuery)
+    );
   }, [cards]);
 
   return {
     cards,
-    loading,
+    isLoading,
     error,
-    totalCards: cards.length,
-    getCardByNumber,
-    getCardsByName,
-    searchCards
+    reload: loadCards,
+    getCardById,
+    getCardsBySet,
+    searchCardsByName,
+    totalCards: cards.length
   };
 }
