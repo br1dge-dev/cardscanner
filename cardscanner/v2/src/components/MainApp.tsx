@@ -24,7 +24,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [collectionCount, setCollectionCount] = useState(0);
 
-  const { cards, loading: cardsLoading, error: cardsError, totalCards } = useCards();
+  const { cards, isLoading: cardsLoading, error: cardsError, totalCards } = useCards();
   const { processImage, isProcessing, terminateWorker } = useOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
 
@@ -168,7 +168,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         )}
       </main>
 
-      {scanResult !== undefined && (
+      {scanResult !== null && (
         <CardResult
           match={scanResult}
           onSave={handleSaveCard}

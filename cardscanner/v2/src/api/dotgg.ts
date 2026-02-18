@@ -1,7 +1,10 @@
 /**
  * DotGG API Client - Collection management
  * Based on official API documentation
+ * Uses CapacitorHttp for native network requests
  */
+import { CapacitorHttp } from '@capacitor/core';
+import type { HttpResponse } from '@capacitor/core';
 import type { CollectionCard, User } from '../types';
 
 const API_BASE_URL = 'https://api.dotgg.gg';
@@ -38,23 +41,33 @@ class DotGGClient {
     };
   }
 
+  private parseResponse<T>(response: HttpResponse): T {
+    if (typeof response.data === 'string') {
+      return JSON.parse(response.data) as T;
+    }
+    return response.data as T;
+  }
+
   async getUserData(user: User): Promise<ApiResponse<UserData>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cgfw/getuserdata?game=${GAME}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(user)
+      const response: HttpResponse = await CapacitorHttp.get({
+        url: `${API_BASE_URL}/cgfw/getuserdata`,
+        headers: this.getAuthHeaders(user),
+        params: { game: GAME }
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          return { success: false, error: 'Unauthorized - Invalid token' };
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.status === 401) {
+        return { success: false, error: 'Unauthorized - Invalid token' };
       }
 
-      const data: UserData = await response.json();
+      if (response.status !== 200) {
+        return { success: false, error: `HTTP error! status: ${response.status}` };
+      }
+
+      const data: UserData = this.parseResponse(response);
       return { success: true, data };
     } catch (err) {
+      console.error('getUserData error:', err);
       return { 
         success: false, 
         error: err instanceof Error ? err.message : 'Failed to fetch user data' 
@@ -71,26 +84,28 @@ class DotGGClient {
     wish: number = 0
   ): Promise<ApiResponse<{ error: boolean; newCount: number }>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cgfw/savecollection?game=${GAME}`, {
-        method: 'POST',
+      const response: HttpResponse = await CapacitorHttp.post({
+        url: `${API_BASE_URL}/cgfw/savecollection`,
         headers: this.getAuthHeaders(user),
-        body: JSON.stringify({
+        params: { game: GAME },
+        data: {
           card: cardId,
           type,
           count,
           trade,
           wish
-        })
+        }
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          return { success: false, error: 'Unauthorized' };
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.status === 401) {
+        return { success: false, error: 'Unauthorized' };
       }
 
-      const data = await response.json();
+      if (response.status !== 200) {
+        return { success: false, error: `HTTP error! status: ${response.status}` };
+      }
+
+      const data = this.parseResponse<{ error: boolean; error_text?: string; newCount: number }>(response);
       
       if (data.error) {
         return { success: false, error: data.error_text || 'Save failed' };
@@ -98,6 +113,7 @@ class DotGGClient {
       
       return { success: true, data };
     } catch (err) {
+      console.error('saveCard error:', err);
       return { 
         success: false, 
         error: err instanceof Error ? err.message : 'Failed to save card' 
@@ -117,7 +133,6 @@ class DotGGClient {
     user: User,
     localCards: CollectionCard[]
   ): Promise<ApiResponse<{ error: boolean; synced: number }>> {
-    // Use bulk sync endpoint
     try {
       const items = localCards.map(card => ({
         card: card.cardId,
@@ -127,20 +142,22 @@ class DotGGClient {
         wish: String(card.wish || 0)
       }));
 
-      const response = await fetch(`${API_BASE_URL}/cgfw/synclocalcollection?game=${GAME}`, {
-        method: 'POST',
+      const response: HttpResponse = await CapacitorHttp.post({
+        url: `${API_BASE_URL}/cgfw/synclocalcollection`,
         headers: this.getAuthHeaders(user),
-        body: JSON.stringify({ items })
+        params: { game: GAME },
+        data: { items }
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          return { success: false, error: 'Unauthorized' };
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.status === 401) {
+        return { success: false, error: 'Unauthorized' };
       }
 
-      const data = await response.json();
+      if (response.status !== 200) {
+        return { success: false, error: `HTTP error! status: ${response.status}` };
+      }
+
+      const data = this.parseResponse<{ error: boolean; error_text?: string; synced?: number }>(response);
       
       if (data.error) {
         return { success: false, error: data.error_text || 'Sync failed' };
@@ -151,6 +168,7 @@ class DotGGClient {
         data: { error: false, synced: data.synced || items.length }
       };
     } catch (err) {
+      console.error('syncCollection error:', err);
       return { 
         success: false, 
         error: err instanceof Error ? err.message : 'Failed to sync collection' 
