@@ -5,7 +5,16 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
+import { preprocessImage } from '../utils/imagePreprocessing';
 import type { ROIMetadata } from '../types';
+
+export interface OCRDebugInfo {
+  rawText: string;
+  confidence: number;
+  processedImage: string;
+  potentialTitles: string[];
+  numberMatch: string | null;
+}
 
 export function useOCR() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -48,8 +57,9 @@ export function useOCR() {
   }, []);
 
   const processImage = useCallback(async (
-    imageDataUrl: string
-  ): Promise<ROIMetadata> => {
+    imageDataUrl: string,
+    enablePreprocessing: boolean = true
+  ): Promise<ROIMetadata & { debug?: OCRDebugInfo }> => {
     setIsProcessing(true);
     setProgress(0);
     setError(null);
@@ -62,13 +72,22 @@ export function useOCR() {
       setProgress(20);
       const scheduler = await initScheduler();
 
-      // Step 2: OCR on FULL IMAGE (ROIs don't work well!)
-      setProgress(40);
+      // Step 2: Preprocess image for better OCR
+      setProgress(30);
+      let processedImageUrl = imageDataUrl;
+      if (enablePreprocessing) {
+        console.log('Preprocessing image...');
+        processedImageUrl = await preprocessImage(imageDataUrl);
+        console.log('Image preprocessing complete');
+      }
+
+      // Step 3: OCR on FULL IMAGE (ROIs don't work well!)
+      setProgress(50);
       console.log('Running OCR on full image with optimized settings...');
-      console.log('Image data URL length:', imageDataUrl.length);
+      console.log('Image data URL length:', processedImageUrl.length);
       
       // Add timeout and better error handling
-      const fullResult = await scheduler.addJob('recognize', imageDataUrl);
+      const fullResult = await scheduler.addJob('recognize', processedImageUrl);
       
       console.log('=== RAW TESSERACT OUTPUT ===');
       console.log('Full OCR text:', fullResult.data.text);
@@ -157,7 +176,14 @@ export function useOCR() {
       return {
         name: nameText,
         number: numberText,
-        confidence: avgConfidence
+        confidence: avgConfidence,
+        debug: {
+          rawText,
+          confidence: fullResult.data.confidence,
+          processedImage: processedImageUrl,
+          potentialTitles: potentialTitles.map(t => t.text),
+          numberMatch: numberText
+        }
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'OCR processing failed';
@@ -171,7 +197,7 @@ export function useOCR() {
 
   const processFile = useCallback(async (
     file: File
-  ): Promise<ROIMetadata> => {
+  ): Promise<ROIMetadata & { debug?: OCRDebugInfo }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async (e) => {

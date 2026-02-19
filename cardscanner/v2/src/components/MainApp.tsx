@@ -6,7 +6,7 @@ import { Menu } from './Menu';
 import { Camera } from './Camera';
 import { CardResult } from './CardResult';
 import { useCards } from '../hooks/useCards';
-import { useOCR } from '../hooks/useOCR';
+import { useOCR, type OCRDebugInfo } from '../hooks/useOCR';
 import { useCardMatching } from '../hooks/useCardMatching';
 import { dotGGClient } from '../api/dotgg';
 import type { User, CardMatch, Game } from '../types';
@@ -40,6 +40,10 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [scanResult, setScanResult] = useState<CardMatch | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found' | 'saved' | 'error'>('idle');
+  
+  // Debug state
+  const [debugMode, setDebugMode] = useState(false);
+  const [ocrDebugInfo, setOcrDebugInfo] = useState<OCRDebugInfo | null>(null);
 
   const { cards, isLoading: cardsLoading, error: cardsError } = useCards();
   const { processImage, isProcessing } = useOCR();
@@ -74,9 +78,16 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const handleCapture = useCallback(async (imageData: string) => {
     setCapturedImage(imageData);
     setScanStatus('scanning');
+    setOcrDebugInfo(null);
     
     try {
       const ocrData = await processImage(imageData);
+      
+      // Save debug info if available
+      if (ocrData.debug) {
+        setOcrDebugInfo(ocrData.debug);
+      }
+      
       const result = await findMatches(ocrData);
       
       if (result.bestMatch) {
@@ -183,10 +194,86 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           </div>
         </div>
 
-        {/* Recent Scans */}
+        {/* Scan Status Feedback */}
         {scanStatus === 'saved' && (
-          <div className="recent-scan-toast">
+          <div className="recent-scan-toast success">
             ✅ Card added to collection!
+          </div>
+        )}
+        
+        {scanStatus === 'not_found' && (
+          <div className="scan-status-overlay">
+            <div className="scan-status-content">
+              <div className="scan-status-icon">❓</div>
+              <h3>No card recognized</h3>
+              <p>Try again with better lighting and hold the card steady</p>
+              {debugMode && ocrDebugInfo && (
+                <button 
+                  className="btn-debug"
+                  onClick={() => {
+                    setScanStatus('idle'); // Close overlay to show debug modal
+                  }}
+                  style={{ marginBottom: '12px' }}
+                >
+                  🔍 View Debug Info
+                </button>
+              )}
+              <div className="scan-status-actions">
+                <button 
+                  className="btn-primary"
+                  onClick={() => {
+                    setScanStatus('idle');
+                    setShowCamera(true);
+                  }}
+                >
+                  🔄 Try Again
+                </button>
+                <button 
+                  className="btn-secondary"
+                  onClick={() => setScanStatus('idle')}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {scanStatus === 'error' && (
+          <div className="scan-status-overlay">
+            <div className="scan-status-content">
+              <div className="scan-status-icon">⚠️</div>
+              <h3>Scan failed</h3>
+              <p>Something went wrong. Please try again.</p>
+              {debugMode && ocrDebugInfo && (
+                <button 
+                  className="btn-debug"
+                  onClick={() => {
+                    setScanStatus('idle'); // Close overlay to show debug modal
+                  }}
+                  style={{ marginBottom: '12px' }}
+                >
+                  🔍 View Debug Info
+                </button>
+              )}
+              <div className="scan-status-actions">
+                <button 
+                  className="btn-primary"
+                  onClick={() => {
+                    setScanStatus('idle');
+                    setShowCamera(true);
+                  }}
+                >
+                  🔄 Retry
+                </button>
+                <button 
+                  className="btn-secondary"
+                  onClick={() => setScanStatus('idle')}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </>
@@ -205,7 +292,14 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           <span className="hamburger-icon">☰</span>
         </button>
         <h1 className="app-title">Card Scanner</h1>
-        <div className="header-spacer" />
+        <button 
+          className="debug-toggle-btn"
+          onClick={() => setDebugMode(!debugMode)}
+          aria-label="Toggle debug mode"
+          title={debugMode ? "Debug mode ON" : "Debug mode OFF"}
+        >
+          <span className={debugMode ? "debug-active" : "debug-inactive"}>🐛</span>
+        </button>
       </header>
 
       {/* Main Content */}
@@ -278,6 +372,95 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           onClose={handleCloseResult}
           isSaving={isSaving}
         />
+      )}
+      
+      {/* Debug View Modal */}
+      {debugMode && ocrDebugInfo && (
+        <div className="debug-modal" onClick={() => setOcrDebugInfo(null)}>
+          <div className="debug-content" onClick={e => e.stopPropagation()}>
+            <div className="debug-header">
+              <h3>🔍 OCR Debug Info</h3>
+              <button 
+                className="debug-close"
+                onClick={() => setOcrDebugInfo(null)}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="debug-body">
+              <div className="debug-section">
+                <h4>Raw OCR Text</h4>
+                <pre className="debug-text">{ocrDebugInfo.rawText || '(no text)'}</pre>
+              </div>
+              
+              <div className="debug-grid">
+                <div className="debug-section">
+                  <h4>Detected Number</h4>
+                  <p className="debug-value">{ocrDebugInfo.numberMatch || 'None'}</p>
+                </div>
+                
+                <div className="debug-section">
+                  <h4>OCR Confidence</h4>
+                  <p className="debug-value">{ocrDebugInfo.confidence?.toFixed(1) || 'N/A'}%</p>
+                </div>
+              </div>
+              
+              <div className="debug-section">
+                <h4>Potential Titles ({ocrDebugInfo.potentialTitles?.length || 0})</h4>
+                <ul className="debug-list">
+                  {ocrDebugInfo.potentialTitles?.map((title, i) => (
+                    <li key={i}>{title}</li>
+                  )) || <li>No titles found</li>}
+                </ul>
+              </div>
+              
+              {scanResult && (
+                <div className="debug-section debug-match">
+                  <h4>✓ Matched Card</h4>
+                  <p><strong>{scanResult.card.name}</strong></p>
+                  <p>{scanResult.card.number} ({scanResult.matchedBy})</p>
+                  <p>Match confidence: {(scanResult.confidence * 100).toFixed(0)}%</p>
+                </div>
+              )}
+              
+              {capturedImage && (
+                <div className="debug-section">
+                  <h4>Processed Image</h4>
+                  <img 
+                    src={ocrDebugInfo.processedImage || capturedImage} 
+                    alt="Processed"
+                    className="debug-image"
+                  />
+                </div>
+              )}
+              
+              <div className="debug-actions">
+                <button 
+                  className="btn-secondary"
+                  onClick={() => {
+                    setOcrDebugInfo(null);
+                    setShowCamera(true);
+                  }}
+                >
+                  📷 New Scan
+                </button>
+                <button 
+                  className="btn-secondary"
+                  onClick={() => {
+                    // Retry with same image
+                    if (capturedImage) {
+                      setOcrDebugInfo(null);
+                      handleCapture(capturedImage);
+                    }
+                  }}
+                >
+                  🔄 Re-scan Same
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
