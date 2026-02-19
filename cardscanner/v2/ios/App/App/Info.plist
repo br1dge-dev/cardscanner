@@ -54,5 +54,9 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to scan Riftbound cards</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app saves scanned card photos to your library</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app accesses photos to scan cards</string>
 </dict>
 </plist>
