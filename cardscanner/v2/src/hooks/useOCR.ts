@@ -1,9 +1,9 @@
 /**
- * useOCR Hook - Text recognition using Google ML Kit via Capacitor plugin
- * Replaces Tesseract.js with native ML Kit implementation
+ * useOCR Hook - Text recognition using Tesseract.js with image preprocessing
+ * Optimized for Riftbound trading card scanning
  */
-import { useState, useCallback } from 'react';
-import { CapacitorPluginMlKitTextRecognition } from '@pantrist/capacitor-plugin-ml-kit-text-recognition';
+import { useState, useCallback, useRef } from 'react';
+import Tesseract from 'tesseract.js';
 import type { ROIMetadata } from '../types';
 
 interface ROIDefinition {
@@ -14,23 +14,24 @@ interface ROIDefinition {
   label: string;
 }
 
-// ROI definitions for card scanning
-// Card layout: Title in upper-middle, number in lower portion
+// ROI definitions for Riftbound card layout
+// Title: Top 15-35% of card (centered)
+// Number: Bottom 10-25% (left side where set code is)
 export const DEFAULT_ROIS: ROIDefinition[] = [
   {
-    // Card Title Region - upper middle area
-    x: 0.10,
-    y: 0.05,
-    width: 0.80,
-    height: 0.25,
+    // Card Title Region - upper area (15-35% from top)
+    x: 0.15,
+    y: 0.15,
+    width: 0.70,
+    height: 0.20,
     label: 'title'
   },
   {
-    // Card Number Region - bottom area
+    // Card Number/Set Code Region - bottom left area (10-25% from bottom)
     x: 0.05,
-    y: 0.70,
-    width: 0.90,
-    height: 0.25,
+    y: 0.75,
+    width: 0.45,
+    height: 0.15,
     label: 'number'
   }
 ];
@@ -40,89 +41,107 @@ interface OCROptions {
   rois?: ROIDefinition[];
 }
 
+/**
+ * Preprocess image for better OCR results
+ * - Convert to grayscale
+ * - Increase contrast
+ * - Apply slight brightness boost
+ * - Resize to optimal OCR size (1500px width max)
+ */
+const preprocessImage = (imageDataUrl: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      
+      // Resize if too large (OCR works better at moderate sizes)
+      const maxWidth = 1500;
+      const scale = Math.min(1, maxWidth / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      
+      // Draw and apply filters
+      ctx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => reject(new Error('Failed to load image for preprocessing'));
+    img.src = imageDataUrl;
+  });
+};
+
+/**
+ * Extract region of interest from image
+ */
+const extractROI = (imageDataUrl: string, roi: ROIDefinition): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      
+      // Calculate ROI in pixels
+      const roiX = roi.x * img.width;
+      const roiY = roi.y * img.height;
+      const roiWidth = roi.width * img.width;
+      const roiHeight = roi.height * img.height;
+      
+      canvas.width = roiWidth;
+      canvas.height = roiHeight;
+      
+      // Draw the ROI region
+      ctx.drawImage(
+        img,
+        roiX, roiY, roiWidth, roiHeight,
+        0, 0, roiWidth, roiHeight
+      );
+      
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => reject(new Error('Failed to load image for ROI extraction'));
+    img.src = imageDataUrl;
+  });
+};
+
 export function useOCR(options: OCROptions = {}) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const tesseractScheduler = useRef<Tesseract.Scheduler | null>(null);
 
   /**
-   * Check if a bounding box is within an ROI
+   * Initialize Tesseract scheduler for parallel processing
    */
-  const isInROI = useCallback((
-    box: { left: number; top: number; right: number; bottom: number },
-    roi: ROIDefinition,
-    imageWidth: number,
-    imageHeight: number
-  ): boolean => {
-    // Calculate ROI in pixels
-    const roiLeft = roi.x * imageWidth;
-    const roiTop = roi.y * imageHeight;
-    const roiRight = (roi.x + roi.width) * imageWidth;
-    const roiBottom = (roi.y + roi.height) * imageHeight;
-
-    // Check if box center is within ROI
-    const boxCenterX = (box.left + box.right) / 2;
-    const boxCenterY = (box.top + box.bottom) / 2;
-
-    return boxCenterX >= roiLeft && boxCenterX <= roiRight &&
-           boxCenterY >= roiTop && boxCenterY <= roiBottom;
-  }, []);
-
-  /**
-   * Extract text from ML Kit result based on ROI
-   */
-  const extractTextFromROI = useCallback((
-    result: { text: string; blocks: Array<{
-      text: string;
-      boundingBox: { left: number; top: number; right: number; bottom: number };
-      lines: Array<{
-        text: string;
-        boundingBox: { left: number; top: number; right: number; bottom: number };
-      }>;
-    }> },
-    roi: ROIDefinition,
-    imageWidth: number,
-    imageHeight: number
-  ): string => {
-    // Collect all lines that fall within this ROI
-    const linesInROI: Array<{ text: string; y: number }> = [];
-
-    for (const block of result.blocks) {
-      for (const line of block.lines) {
-        if (isInROI(line.boundingBox, roi, imageWidth, imageHeight)) {
-          const centerY = (line.boundingBox.top + line.boundingBox.bottom) / 2;
-          linesInROI.push({ text: line.text.trim(), y: centerY });
-        }
-      }
+  const initScheduler = useCallback(async () => {
+    if (!tesseractScheduler.current) {
+      const scheduler = Tesseract.createScheduler();
+      const worker = await Tesseract.createWorker('eng');
+      await scheduler.addWorker(worker);
+      tesseractScheduler.current = scheduler;
     }
-
-    // Sort by vertical position (top to bottom)
-    linesInROI.sort((a, b) => a.y - b.y);
-
-    // Join lines with spaces
-    return linesInROI.map(l => l.text).join(' ');
-  }, [isInROI]);
-
-  /**
-   * Get image dimensions from base64 data URL
-   */
-  const getImageDimensions = useCallback((imageDataUrl: string): Promise<{ width: number; height: number }> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        resolve({ width: img.width, height: img.height });
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = imageDataUrl;
-    });
+    return tesseractScheduler.current;
   }, []);
 
   /**
-   * Convert data URL to base64 string (remove prefix)
+   * Terminate Tesseract scheduler
    */
-  const extractBase64 = useCallback((dataUrl: string): string => {
-    const match = dataUrl.match(/^data:image\/(?:png|jpeg|jpg|webp);base64,(.+)$/);
-    return match ? match[1] : dataUrl;
+  const terminateWorker = useCallback(async () => {
+    if (tesseractScheduler.current) {
+      await tesseractScheduler.current.terminate();
+      tesseractScheduler.current = null;
+    }
   }, []);
 
   const processImage = useCallback(async (
@@ -135,88 +154,111 @@ export function useOCR(options: OCROptions = {}) {
     try {
       const rois = options.rois || DEFAULT_ROIS;
 
-      // Get image dimensions for ROI calculations
+      console.log('=== Tesseract OCR DEBUG ===');
+      console.log('Starting OCR processing...');
+
+      // Step 1: Preprocess the image
       setProgress(10);
-      const { width: imageWidth, height: imageHeight } = await getImageDimensions(imageDataUrl);
+      console.log('Step 1: Preprocessing image...');
+      const preprocessedImage = await preprocessImage(imageDataUrl);
+      console.log('Preprocessing complete');
 
-      // Extract base64 from data URL
-      const base64Image = extractBase64(imageDataUrl);
-
-      // Run ML Kit text detection
-      setProgress(30);
-      const result = await CapacitorPluginMlKitTextRecognition.detectText({ base64Image });
-      setProgress(70);
-
-      // Debug logging
-      console.log('=== ML Kit OCR DEBUG ===');
-      console.log('Full text:', result.text);
-      console.log('Blocks found:', result.blocks.length);
+      // Step 2: Initialize scheduler
+      setProgress(20);
+      const scheduler = await initScheduler();
 
       // Find title and number ROIs
       const titleROI = rois.find(r => r.label === 'title');
       const numberROI = rois.find(r => r.label === 'number');
 
-      // Extract text from each ROI
+      // Step 3: Extract and process title ROI
+      setProgress(30);
       let nameText = '';
-      let numberText = '';
-
+      let nameConfidence = 0;
+      
       if (titleROI) {
-        nameText = extractTextFromROI(result, titleROI, imageWidth, imageHeight);
+        console.log('Step 3: Processing title ROI...', titleROI);
+        const titleImage = await extractROI(preprocessedImage, titleROI);
+        console.log('Title ROI extracted, running OCR...');
+        
+        const titleResult = await scheduler.addJob('recognize', titleImage);
+        console.log('Title OCR result:', titleResult.data);
+        
+        nameText = titleResult.data.text
+          .replace(/\s+/g, ' ')
+          .replace(/[^a-zA-Z0-9\s\-']/g, '')
+          .trim();
+        nameConfidence = titleResult.data.confidence / 100;
+        console.log('Extracted name:', nameText, 'Confidence:', nameConfidence);
       }
 
+      // Step 4: Extract and process number ROI
+      setProgress(60);
+      let numberText = '';
+      let numberConfidence = 0;
+      
       if (numberROI) {
-        numberText = extractTextFromROI(result, numberROI, imageWidth, imageHeight);
+        console.log('Step 4: Processing number ROI...', numberROI);
+        const numberImage = await extractROI(preprocessedImage, numberROI);
+        console.log('Number ROI extracted, running OCR...');
+        
+        const numberResult = await scheduler.addJob('recognize', numberImage);
+        console.log('Number OCR result:', numberResult.data);
+        
+        numberText = numberResult.data.text
+          .replace(/\s+/g, '')
+          .replace(/[^a-zA-Z0-9\-]/g, '')
+          .trim();
+        numberConfidence = numberResult.data.confidence / 100;
+        console.log('Extracted number:', numberText, 'Confidence:', numberConfidence);
       }
 
       setProgress(90);
 
-      // If ROI extraction didn't find text, fall back to full text
-      if (!nameText && !numberText && result.text) {
-        // Simple heuristic: first line might be title, last line might be number
-        const lines = result.text.split('\n').filter((l: string) => l.trim());
+      // If ROI extraction didn't find text, try full image
+      if (!nameText && !numberText) {
+        console.log('No text found in ROIs, trying full image...');
+        const fullResult = await scheduler.addJob('recognize', preprocessedImage);
+        console.log('Full image OCR result:', fullResult.data);
+        
+        const lines = fullResult.data.text
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => l.length > 0);
+        
         if (lines.length > 0 && !nameText) {
-          nameText = lines[0];
+          nameText = lines[0].replace(/[^a-zA-Z0-9\s\-']/g, '').trim();
         }
         if (lines.length > 1 && !numberText) {
-          numberText = lines[lines.length - 1];
+          numberText = lines[lines.length - 1].replace(/[^a-zA-Z0-9\-]/g, '').trim();
         }
       }
 
-      // Clean up extracted text
-      const cleanName = nameText
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      const cleanNumber = numberText
-        .replace(/\s+/g, '')
-        .replace(/[^a-zA-Z0-9\-]/g, '')
-        .trim();
-
-      console.log('Extracted name:', cleanName);
-      console.log('Extracted number:', cleanNumber);
-      console.log('=======================');
-
       setProgress(100);
 
-      // Calculate confidence based on text presence
-      // ML Kit doesn't provide per-text confidence, so we use heuristics
-      const nameConfidence = cleanName.length > 0 ? 0.85 : 0.3;
-      const numberConfidence = cleanNumber.length > 0 ? 0.90 : 0.3;
+      // Calculate overall confidence
+      const avgConfidence = (nameConfidence + numberConfidence) / 2;
+      
+      console.log('=== FINAL RESULTS ===');
+      console.log('Name:', nameText, `(confidence: ${(nameConfidence * 100).toFixed(1)}%)`);
+      console.log('Number:', numberText, `(confidence: ${(numberConfidence * 100).toFixed(1)}%)`);
+      console.log('Overall confidence:', (avgConfidence * 100).toFixed(1) + '%');
+      console.log('=====================');
 
       return {
-        name: cleanName,
-        number: cleanNumber,
-        confidence: (nameConfidence + numberConfidence) / 2
+        name: nameText,
+        number: numberText,
+        confidence: avgConfidence
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'OCR processing failed';
       setError(errorMessage);
-      console.error('ML Kit OCR error:', err);
+      console.error('Tesseract OCR error:', err);
       throw err;
     } finally {
       setIsProcessing(false);
     }
-  }, [options.rois, getImageDimensions, extractBase64, extractTextFromROI]);
+  }, [options.rois, initScheduler]);
 
   const processFile = useCallback(async (
     file: File
@@ -235,11 +277,6 @@ export function useOCR(options: OCROptions = {}) {
       reader.readAsDataURL(file);
     });
   }, [processImage]);
-
-  // No-op for ML Kit - no worker to terminate
-  const terminateWorker = useCallback(async () => {
-    // ML Kit is native, no cleanup needed
-  }, []);
 
   return {
     processImage,
