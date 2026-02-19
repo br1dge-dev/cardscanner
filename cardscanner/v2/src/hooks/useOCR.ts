@@ -1,121 +1,13 @@
 /**
- * useOCR Hook - Text recognition using Tesseract.js with image preprocessing
+ * useOCR Hook - Text recognition using Tesseract.js
  * Optimized for Riftbound trading card scanning
+ * Uses FULL IMAGE OCR + Regex extraction (ROIs don't work well)
  */
 import { useState, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import type { ROIMetadata } from '../types';
 
-interface ROIDefinition {
-  x: number;      // percentage (0-1)
-  y: number;      // percentage (0-1)
-  width: number;  // percentage (0-1)
-  height: number; // percentage (0-1)
-  label: string;
-}
-
-// ROI definitions for Riftbound card layout
-// Title: MIDDLE of card (purple box area, 50-65% from top)
-// Number: BOTTOM LEFT (set code like OGN-170, 88-95% from top)
-export const DEFAULT_ROIS: ROIDefinition[] = [
-  {
-    // Card Title Region - MIDDLE of card where purple box is
-    x: 0.10,
-    y: 0.52,
-    width: 0.80,
-    height: 0.12,
-    label: 'title'
-  },
-  {
-    // Card Number Region - BOTTOM LEFT corner (OGN-170)
-    x: 0.05,
-    y: 0.88,
-    width: 0.40,
-    height: 0.08,
-    label: 'number'
-  }
-];
-
-interface OCROptions {
-  language?: string;
-  rois?: ROIDefinition[];
-}
-
-/**
- * Preprocess image for better OCR results
- * - Convert to grayscale
- * - Increase contrast
- * - Apply slight brightness boost
- * - Resize to optimal OCR size (1500px width max)
- */
-const preprocessImage = (imageDataUrl: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
-      
-      // Resize if too large (OCR works better at moderate sizes)
-      const maxWidth = 1500;
-      const scale = Math.min(1, maxWidth / img.width);
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      
-      // Draw and apply filters
-      ctx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
-    };
-    img.onerror = () => reject(new Error('Failed to load image for preprocessing'));
-    img.src = imageDataUrl;
-  });
-};
-
-/**
- * Extract region of interest from image
- */
-const extractROI = (imageDataUrl: string, roi: ROIDefinition): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
-      
-      // Calculate ROI in pixels
-      const roiX = roi.x * img.width;
-      const roiY = roi.y * img.height;
-      const roiWidth = roi.width * img.width;
-      const roiHeight = roi.height * img.height;
-      
-      canvas.width = roiWidth;
-      canvas.height = roiHeight;
-      
-      // Draw the ROI region
-      ctx.drawImage(
-        img,
-        roiX, roiY, roiWidth, roiHeight,
-        0, 0, roiWidth, roiHeight
-      );
-      
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
-    };
-    img.onerror = () => reject(new Error('Failed to load image for ROI extraction'));
-    img.src = imageDataUrl;
-  });
-};
-
-export function useOCR(options: OCROptions = {}) {
+export function useOCR() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -152,129 +44,89 @@ export function useOCR(options: OCROptions = {}) {
     setError(null);
 
     try {
-      const rois = options.rois || DEFAULT_ROIS;
-
       console.log('=== Tesseract OCR DEBUG ===');
       console.log('Starting OCR processing...');
 
-      // Step 1: Preprocess the image
-      setProgress(10);
-      console.log('Step 1: Preprocessing image...');
-      const preprocessedImage = await preprocessImage(imageDataUrl);
-      console.log('Preprocessing complete');
-
-      // Step 2: Initialize scheduler
+      // Step 1: Initialize scheduler
       setProgress(20);
       const scheduler = await initScheduler();
 
-      // Find title and number ROIs
-      const titleROI = rois.find(r => r.label === 'title');
-      const numberROI = rois.find(r => r.label === 'number');
-
-      // Step 3: Extract and process title ROI
-      setProgress(30);
-      let nameText = '';
-      let nameConfidence = 0;
+      // Step 2: OCR on FULL IMAGE (ROIs don't work well!)
+      setProgress(40);
+      console.log('Running OCR on full image...');
+      const fullResult = await scheduler.addJob('recognize', imageDataUrl);
+      console.log('Full OCR text:', fullResult.data.text);
+      console.log('Full OCR confidence:', fullResult.data.confidence);
       
-      if (titleROI) {
-        console.log('Step 3: Processing title ROI...', titleROI);
-        const titleImage = await extractROI(preprocessedImage, titleROI);
-        console.log('Title ROI extracted, running OCR...');
-        
-        const titleResult = await scheduler.addJob('recognize', titleImage);
-        console.log('Title OCR raw result:', titleResult.data.text);
-        
-        // Smart title extraction: find the longest clean line (likely the card name)
-        const lines = titleResult.data.text
-          .split('\n')
-          .map(l => l.trim())
-          .filter(l => l.length > 2 && l.length < 50); // Reasonable name length
-        
-        // Sort by length (longest first) and clean
-        const cleanLines = lines
-          .map(l => l.replace(/[^a-zA-Z0-9\s\-']/g, '').trim())
-          .filter(l => l.length > 2);
-        
-        if (cleanLines.length > 0) {
-          // Take the longest line as the title
-          nameText = cleanLines.sort((a, b) => b.length - a.length)[0];
-          console.log('Extracted title from lines:', cleanLines, '→', nameText);
-        } else {
-          // Fallback to full text
-          nameText = titleResult.data.text
-            .replace(/\s+/g, ' ')
-            .replace(/[^a-zA-Z0-9\s\-']/g, '')
-            .trim();
-        }
-        nameConfidence = titleResult.data.confidence / 100;
-        console.log('Final name:', nameText, 'Confidence:', nameConfidence);
-      }
-
-      // Step 4: Extract and process number ROI
+      const rawText = fullResult.data.text;
+      
+      // Step 3: Extract card number using regex (most reliable)
       setProgress(60);
+      // Pattern: 2-3 uppercase letters, optional space/dash/dot, 3 digits
+      // Matches: OGN-170, OGN - 170, OGN•170, SFD-001
+      const cardNumberPattern = /([A-Z]{2,3})\s*[-•.]?\s*(\d{3})/;
+      const numberMatch = rawText.match(cardNumberPattern);
+      
       let numberText = '';
       let numberConfidence = 0;
       
-      if (numberROI) {
-        console.log('Step 4: Processing number ROI...', numberROI);
-        const numberImage = await extractROI(preprocessedImage, numberROI);
-        console.log('Number ROI extracted, running OCR...');
-        
-        const numberResult = await scheduler.addJob('recognize', numberImage);
-        console.log('Number OCR raw result:', numberResult.data.text);
-        
-        // Extract card number using regex pattern (e.g., OGN-170, SFD-001)
-        // Pattern: 2-3 uppercase letters, optional space/dash, 3 digits, optional /total
-        const cardNumberPattern = /([A-Z]{2,3})\s*[-]?\s*(\d{3})(?:\/(\d+))?/;
-        const rawText = numberResult.data.text;
-        const match = rawText.match(cardNumberPattern);
-        
-        if (match) {
-          // Found a card number: OGN-170 or OGN - 170/298
-          numberText = `${match[1]}-${match[2]}`;
-          console.log('Extracted card number via regex:', numberText);
-          numberConfidence = 0.9; // High confidence when pattern matches
-        } else {
-          // Fallback: clean up the text
-          numberText = rawText
-            .replace(/\s+/g, '')
-            .replace(/[^a-zA-Z0-9\-]/g, '')
-            .trim();
-          numberConfidence = numberResult.data.confidence / 100;
-        }
-        console.log('Final number:', numberText, 'Confidence:', numberConfidence);
+      if (numberMatch) {
+        numberText = `${numberMatch[1]}-${numberMatch[2]}`;
+        numberConfidence = 0.85;
+        console.log('✓ Found card number:', numberText);
+      } else {
+        console.log('✗ No card number pattern found');
       }
-
-      setProgress(90);
-
-      // If ROI extraction didn't find text, try full image
-      if (!nameText && !numberText) {
-        console.log('No text found in ROIs, trying full image...');
-        const fullResult = await scheduler.addJob('recognize', preprocessedImage);
-        console.log('Full image OCR result:', fullResult.data);
-        
-        const lines = fullResult.data.text
-          .split('\n')
-          .map(l => l.trim())
-          .filter(l => l.length > 0);
-        
-        if (lines.length > 0 && !nameText) {
-          nameText = lines[0].replace(/[^a-zA-Z0-9\s\-']/g, '').trim();
-        }
-        if (lines.length > 1 && !numberText) {
-          numberText = lines[lines.length - 1].replace(/[^a-zA-Z0-9\-]/g, '').trim();
-        }
+      
+      // Step 4: Extract card name
+      setProgress(80);
+      let nameText = '';
+      let nameConfidence = 0;
+      
+      // Split by lines and look for title-like text
+      const lines = rawText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 3 && l.length < 40); // Reasonable title length
+      
+      // Heuristic: Title is usually a clean line with words (not symbols)
+      // Filter out lines that are mostly special characters or too short
+      const potentialTitles = lines
+        .map(l => ({ 
+          text: l.replace(/[^a-zA-Z0-9\s\-']/g, '').trim(),
+          original: l 
+        }))
+        .filter(l => l.text.length > 3)
+        .filter(l => {
+          // Should have multiple words or be reasonably long
+          const words = l.text.split(/\s+/).filter(w => w.length > 1);
+          return words.length >= 1 && l.text.length > 5;
+        });
+      
+      console.log('Potential title lines:', potentialTitles.map(t => t.text));
+      
+      if (potentialTitles.length > 0) {
+        // Take the first reasonable-looking title
+        nameText = potentialTitles[0].text;
+        nameConfidence = 0.7;
+        console.log('✓ Selected title:', nameText);
+      } else if (lines.length > 0) {
+        // Fallback to first clean line
+        nameText = lines[0].replace(/[^a-zA-Z0-9\s\-']/g, '').trim();
+        nameConfidence = 0.5;
       }
 
       setProgress(100);
 
       // Calculate overall confidence
-      const avgConfidence = (nameConfidence + numberConfidence) / 2;
+      const avgConfidence = numberText && nameText ? 
+        (nameConfidence + numberConfidence) / 2 :
+        (numberText ? numberConfidence : nameConfidence);
       
       console.log('=== FINAL RESULTS ===');
-      console.log('Name:', nameText, `(confidence: ${(nameConfidence * 100).toFixed(1)}%)`);
-      console.log('Number:', numberText, `(confidence: ${(numberConfidence * 100).toFixed(1)}%)`);
-      console.log('Overall confidence:', (avgConfidence * 100).toFixed(1) + '%');
+      console.log('Name:', nameText, `(confidence: ${(nameConfidence * 100).toFixed(0)}%)`);
+      console.log('Number:', numberText, `(confidence: ${(numberConfidence * 100).toFixed(0)}%)`);
+      console.log('Overall confidence:', (avgConfidence * 100).toFixed(0) + '%');
       console.log('=====================');
 
       return {
@@ -290,7 +142,7 @@ export function useOCR(options: OCROptions = {}) {
     } finally {
       setIsProcessing(false);
     }
-  }, [options.rois, initScheduler]);
+  }, [initScheduler]);
 
   const processFile = useCallback(async (
     file: File
