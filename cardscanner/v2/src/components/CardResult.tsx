@@ -9,7 +9,7 @@ import './CardResult.css';
 interface CardResultProps {
   match: CardMatch | null;
   capturedImage?: string | null;
-  onSave?: (cardId: string, quantity: number) => void;
+  onSave?: (cardId: string, quantity: number, isFoil: boolean) => void;
   onClose: () => void;
   isSaving?: boolean;
 }
@@ -23,6 +23,14 @@ export const CardResult: React.FC<CardResultProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [showCapturedImage, setShowCapturedImage] = useState(false);
+  const [isFoil, setIsFoil] = useState(false);
+
+  // Check if card can be foil (Common or Uncommon)
+  const canBeFoil = () => {
+    if (!match?.card.rarity) return false;
+    const rarity = match.card.rarity.toLowerCase();
+    return rarity === 'common' || rarity === 'uncommon';
+  };
 
   if (!match) {
     return (
@@ -67,7 +75,7 @@ export const CardResult: React.FC<CardResultProps> = ({
   const decrement = () => setQuantity(q => Math.max(1, q - 1));
 
   const handleSave = () => {
-    onSave?.(card.id, quantity);
+    onSave?.(card.id, quantity, isFoil);
   };
 
   const getRarityClass = (rarity?: string) => {
@@ -189,6 +197,18 @@ export const CardResult: React.FC<CardResultProps> = ({
             </button>
           )}
           
+          {/* Foil Toggle - only for Common/Uncommon */}
+          {canBeFoil() && (
+            <label className="foil-toggle">
+              <input
+                type="checkbox"
+                checked={isFoil}
+                onChange={(e) => setIsFoil(e.target.checked)}
+              />
+              <span className="foil-toggle-text">✨ Add as Foil</span>
+            </label>
+          )}
+          
           <div className="quantity-selector">
             <button 
               className="qty-btn" 
@@ -204,7 +224,7 @@ export const CardResult: React.FC<CardResultProps> = ({
           </div>
 
           <button 
-            className="save-btn"
+            className={`save-btn ${isFoil ? 'foil-btn' : ''}`}
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -213,7 +233,7 @@ export const CardResult: React.FC<CardResultProps> = ({
             ) : (
               <>
                 <Save size={18} />
-                Add to Collection
+                {isFoil ? 'Add Foil to Collection' : 'Add to Collection'}
               </>
             )}
           </button>
