@@ -19,6 +19,7 @@ interface MainAppProps {
 
 export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [showCamera, setShowCamera] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<CardMatch | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -47,6 +48,9 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   }, [terminateWorker]);
 
   const handleCapture = useCallback(async (imageData: string) => {
+    // Store the captured image
+    setCapturedImage(imageData);
+    
     try {
       // Process image with OCR
       const ocrData = await processImage(imageData);
@@ -76,6 +80,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         setCollectionCount(prev => prev + quantity);
         setTimeout(() => {
           setScanResult(null);
+          setCapturedImage(null);
           setSaveMessage(null);
         }, 1500);
       } else {
@@ -90,6 +95,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
   const handleCloseResult = useCallback(() => {
     setScanResult(null);
+    setCapturedImage(null);
   }, []);
 
   if (showCamera) {
@@ -148,7 +154,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
             <div className="scan-section">
               <p className="scan-instruction">
-                Position your card in the camera frame and tap the button to scan.
+                Tap the button to open your camera and scan a card.
               </p>
               <button 
                 className="scan-btn"
@@ -171,6 +177,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       {scanResult !== null && (
         <CardResult
           match={scanResult}
+          capturedImage={capturedImage}
           onSave={handleSaveCard}
           onClose={handleCloseResult}
           isSaving={isSaving}

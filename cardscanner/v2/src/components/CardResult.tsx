@@ -8,6 +8,7 @@ import './CardResult.css';
 
 interface CardResultProps {
   match: CardMatch | null;
+  capturedImage?: string | null;
   onSave?: (cardId: string, quantity: number) => void;
   onClose: () => void;
   isSaving?: boolean;
@@ -15,11 +16,13 @@ interface CardResultProps {
 
 export const CardResult: React.FC<CardResultProps> = ({ 
   match, 
+  capturedImage,
   onSave, 
   onClose,
   isSaving = false
 }) => {
   const [quantity, setQuantity] = useState(1);
+  const [showCapturedImage, setShowCapturedImage] = useState(false);
 
   if (!match) {
     return (
@@ -91,74 +94,112 @@ export const CardResult: React.FC<CardResultProps> = ({
         </div>
 
         <div className="card-result-content">
-          <div className="card-image-container">
-            {card.imageUrl ? (
-              <img 
-                src={card.imageUrl} 
-                alt={card.name}
-                className="card-image"
-              />
-            ) : (
-              <div className="card-image-placeholder">
-                <span>{card.name[0]}</span>
+          {capturedImage && showCapturedImage ? (
+            <div className="captured-preview-container">
+              <div className="captured-image-wrapper">
+                <img 
+                  src={capturedImage} 
+                  alt="Captured card"
+                  className="captured-preview-image"
+                />
+                {/* ROI Overlay on captured image */}
+                <div className="roi-overlay-static">
+                  <div className="roi-box-static roi-title-static">
+                    <span className="roi-label-static">Card Title</span>
+                  </div>
+                  <div className="roi-box-static roi-number-static">
+                    <span className="roi-label-static">Card Number</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-
-          <div className="card-info">
-            <h3 className="card-name">{card.name}</h3>
-            
-            <div className="card-meta">
-              <span className="card-number">{card.number}</span>
-              {card.set && <span className="card-set">{card.set}</span>}
-              {card.rarity && (
-                <span className={`card-rarity ${getRarityClass(card.rarity)}`}>
-                  {card.rarity}
-                </span>
-              )}
+              <button 
+                className="toggle-image-btn"
+                onClick={() => setShowCapturedImage(false)}
+              >
+                Show Card Data
+              </button>
             </div>
-
-            {card.type && (
-              <div className="card-details">
-                <span className="detail-label">Type:</span>
-                <span className="detail-value">{card.type}</span>
-              </div>
-            )}
-
-            {(card.power || card.cost) && (
-              <div className="card-stats">
-                {card.cost && (
-                  <div className="stat">
-                    <span className="stat-label">Cost</span>
-                    <span className="stat-value">{card.cost}</span>
-                  </div>
-                )}
-                {card.power && (
-                  <div className="stat">
-                    <span className="stat-label">Power</span>
-                    <span className="stat-value">{card.power}</span>
-                  </div>
-                )}
-                {card.life && (
-                  <div className="stat">
-                    <span className="stat-label">Life</span>
-                    <span className="stat-value">{card.life}</span>
+          ) : (
+            <>
+              <div className="card-image-container">
+                {card.imageUrl ? (
+                  <img 
+                    src={card.imageUrl} 
+                    alt={card.name}
+                    className="card-image"
+                  />
+                ) : (
+                  <div className="card-image-placeholder">
+                    <span>{card.name[0]}</span>
                   </div>
                 )}
               </div>
-            )}
 
-            {card.attributes && card.attributes.length > 0 && (
-              <div className="card-attributes">
-                {card.attributes.map((attr, idx) => (
-                  <span key={idx} className="attribute-tag">{attr}</span>
-                ))}
+              <div className="card-info">
+                <h3 className="card-name">{card.name}</h3>
+                
+                <div className="card-meta">
+                  <span className="card-number">{card.number}</span>
+                  {card.set && <span className="card-set">{card.set}</span>}
+                  {card.rarity && (
+                    <span className={`card-rarity ${getRarityClass(card.rarity)}`}>
+                      {card.rarity}
+                    </span>
+                  )}
+                </div>
+
+                {card.type && (
+                  <div className="card-details">
+                    <span className="detail-label">Type:</span>
+                    <span className="detail-value">{card.type}</span>
+                  </div>
+                )}
+
+                {(card.power || card.cost) && (
+                  <div className="card-stats">
+                    {card.cost && (
+                      <div className="stat">
+                        <span className="stat-label">Cost</span>
+                        <span className="stat-value">{card.cost}</span>
+                      </div>
+                    )}
+                    {card.power && (
+                      <div className="stat">
+                        <span className="stat-label">Power</span>
+                        <span className="stat-value">{card.power}</span>
+                      </div>
+                    )}
+                    {card.life && (
+                      <div className="stat">
+                        <span className="stat-label">Life</span>
+                        <span className="stat-value">{card.life}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {card.attributes && card.attributes.length > 0 && (
+                  <div className="card-attributes">
+                    {card.attributes.map((attr, idx) => (
+                      <span key={idx} className="attribute-tag">{attr}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
         <div className="card-result-actions">
+          {capturedImage && !showCapturedImage && (
+            <button 
+              className="view-captured-btn"
+              onClick={() => setShowCapturedImage(true)}
+            >
+              View Captured Image
+            </button>
+          )}
+          
           <div className="quantity-selector">
             <button 
               className="qty-btn" 
