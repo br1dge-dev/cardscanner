@@ -44,7 +44,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     loadCollection();
   }, [user]);
 
-  // Cleanup Tesseract worker on unmount
+  // Cleanup on unmount (ML Kit has no workers to terminate)
   useEffect(() => {
     return () => {
       terminateWorker();
