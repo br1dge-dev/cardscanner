@@ -9,6 +9,7 @@ import { useCards } from '../hooks/useCards';
 import { useOCR, type OCRDebugInfo } from '../hooks/useOCR';
 import { useCardMatching } from '../hooks/useCardMatching';
 import { dotGGClient } from '../api/dotgg';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import type { User, CardMatch, Game } from '../types';
 import './MainApp.css';
 
@@ -75,7 +76,28 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     // TODO: Reload card database for new game
   };
 
-  const handleCapture = useCallback(async (imageData: string) => {
+  // Direct camera capture - opens native camera immediately
+const handleDirectCameraCapture = useCallback(async () => {
+  try {
+    const image = await CapacitorCamera.getPhoto({
+      quality: 95,
+      allowEditing: false,
+      resultType: CameraResultType.Base64,
+      source: CameraSource.Camera,
+      width: 2000
+    });
+
+    if (image.base64String) {
+      const imageData = `data:image/jpeg;base64,${image.base64String}`;
+      handleCapture(imageData);
+    }
+  } catch (err) {
+    // User cancelled or error
+    console.log('Camera cancelled or error:', err);
+  }
+}, []);
+
+const handleCapture = useCallback(async (imageData: string) => {
     setCapturedImage(imageData);
     setScanStatus('scanning');
     setOcrDebugInfo(null);
@@ -173,7 +195,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             isProcessing={isProcessing || isMatching}
           />
         ) : (
-          <div className="camera-placeholder-container" onClick={() => setShowCamera(true)}>
+          <div className="camera-placeholder-container" onClick={handleDirectCameraCapture}>
             <div className="camera-preview-box">
               <div className="camera-icon-large">📷</div>
               <p className="camera-tap-text">Tap to scan a card</p>

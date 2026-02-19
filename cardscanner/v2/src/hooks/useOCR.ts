@@ -35,9 +35,10 @@ export function useOCR() {
       
       // Configure for best accuracy on trading cards
       await worker.setParameters({
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/', // Only card-relevant chars
-        tessedit_pageseg_mode: '6' as any, // Assume uniform block of text
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/',
+        tessedit_pageseg_mode: '3' as any, // Auto-segmentation - better for mixed content
         preserve_interword_spaces: '1',
+        tessedit_min_confidence: '30', // Lower threshold to catch more
       });
       
       await scheduler.addWorker(worker);
