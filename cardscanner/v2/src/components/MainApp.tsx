@@ -1,15 +1,15 @@
 /**
- * MainApp Component - Main application logic
+ * MainApp Component - Main application with menu navigation
  */
 import React, { useState, useCallback, useEffect } from 'react';
-import { Camera as CameraIcon, LogOut, User as UserIcon, Library } from 'lucide-react';
+import { Menu } from './Menu';
 import { Camera } from './Camera';
 import { CardResult } from './CardResult';
 import { useCards } from '../hooks/useCards';
 import { useOCR } from '../hooks/useOCR';
 import { useCardMatching } from '../hooks/useCardMatching';
 import { dotGGClient } from '../api/dotgg';
-import type { User, CardMatch } from '../types';
+import type { User, CardMatch, Game } from '../types';
 import './MainApp.css';
 
 interface MainAppProps {
@@ -17,151 +17,203 @@ interface MainAppProps {
   onLogout: () => void;
 }
 
-type ScanStatus = 'idle' | 'scanning' | 'found' | 'not_found' | 'saving' | 'saved' | 'error';
+type ViewMode = 'camera' | 'collection' | 'help' | 'settings';
 
 export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
+  // View state
+  const [viewMode, setViewMode] = useState<ViewMode>('camera');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isGameSelectorOpen, setIsGameSelectorOpen] = useState(false);
+  
+  // Game state
+  const [currentGame, setCurrentGame] = useState<Game>(() => {
+    const saved = localStorage.getItem('cardscanner_game') as Game;
+    return saved || 'riftbound';
+  });
+  
+  // Collection state
+  const [collectionCount, setCollectionCount] = useState(0);
+  
+  // Scan state
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<CardMatch | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [collectionCount, setCollectionCount] = useState(0);
-  const [scanStatus, setScanStatus] = useState<ScanStatus>('idle');
-  const [scanProgress, setScanProgress] = useState('');
+  const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found' | 'saved' | 'error'>('idle');
 
-  const { cards, isLoading: cardsLoading, error: cardsError, totalCards } = useCards();
-  const { processImage, isProcessing, terminateWorker } = useOCR();
+  const { cards, isLoading: cardsLoading, error: cardsError } = useCards();
+  const { processImage, isProcessing } = useOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
 
-  // Load user's collection data on mount
+  // Save game selection
   useEffect(() => {
-    const loadCollection = async () => {
-      const result = await dotGGClient.getUserData(user);
-      if (result.success && result.data) {
-        // Calculate total cards (sum of all quantities, not just unique entries)
-        const totalCards = result.data.collection.reduce((sum, item) => {
-          return sum + (parseInt(item.standard) || 0);
-        }, 0);
-        setCollectionCount(totalCards);
-      }
-    };
+    localStorage.setItem('cardscanner_game', currentGame);
+  }, [currentGame]);
+
+  // Load collection on mount
+  useEffect(() => {
     loadCollection();
   }, [user]);
 
-  // Cleanup on unmount (ML Kit has no workers to terminate)
-  useEffect(() => {
-    return () => {
-      terminateWorker();
-    };
-  }, [terminateWorker]);
+  const loadCollection = async () => {
+    const result = await dotGGClient.getUserData(user);
+    if (result.success && result.data) {
+      const totalCards = result.data.collection.reduce((sum, item) => {
+        return sum + (parseInt(item.standard) || 0);
+      }, 0);
+      setCollectionCount(totalCards);
+    }
+  };
+
+  const handleGameSelect = (game: Game) => {
+    setCurrentGame(game);
+    setIsGameSelectorOpen(false);
+    // TODO: Reload card database for new game
+  };
 
   const handleCapture = useCallback(async (imageData: string) => {
     setCapturedImage(imageData);
     setScanStatus('scanning');
-    setScanProgress('Reading card text...');
     
     try {
-      // Process image with OCR
       const ocrData = await processImage(imageData);
-      setScanProgress('Finding matching card...');
-      
-      // Find matching cards
       const result = await findMatches(ocrData);
       
       if (result.bestMatch) {
-        setScanStatus('found');
         setScanResult(result.bestMatch);
+        setScanStatus('found');
       } else {
-        setScanStatus('not_found');
         setScanResult(null);
+        setScanStatus('not_found');
       }
       setShowCamera(false);
     } catch (err) {
       console.error('Scan error:', err);
       setScanStatus('error');
-      setScanResult(null);
       setShowCamera(false);
     }
   }, [processImage, findMatches]);
 
   const handleSaveCard = useCallback(async (cardId: string, quantity: number) => {
     setIsSaving(true);
-    setScanStatus('saving');
-    setSaveMessage('Adding to collection...');
 
     try {
       const result = await dotGGClient.addCardToCollection(user, cardId, quantity);
       
       if (result.success) {
         setScanStatus('saved');
-        setSaveMessage(`✓ Added ${quantity}x ${scanResult?.card.name || 'card'} to collection!`);
-        // Reload actual collection count from API to ensure accuracy
-        const userData = await dotGGClient.getUserData(user);
-        if (userData.success && userData.data) {
-          const totalCards = userData.data.collection.reduce((sum, item) => {
-            return sum + (parseInt(item.standard) || 0);
-          }, 0);
-          setCollectionCount(totalCards);
-        }
+        await loadCollection(); // Reload to get accurate count
         setTimeout(() => {
           setScanResult(null);
           setCapturedImage(null);
-          setSaveMessage(null);
           setScanStatus('idle');
-        }, 2000);
+        }, 1500);
       } else {
         setScanStatus('error');
-        setSaveMessage(result.error || 'Failed to save card');
       }
     } catch (err) {
       setScanStatus('error');
-      setSaveMessage('Network error. Please try again.');
     } finally {
       setIsSaving(false);
     }
-  }, [user, scanResult]);
+  }, [user]);
 
   const handleCloseResult = useCallback(() => {
     setScanResult(null);
     setCapturedImage(null);
     setScanStatus('idle');
-    setScanProgress('');
-    setSaveMessage(null);
   }, []);
 
-  if (showCamera) {
+  // Render different views
+  const renderContent = () => {
+    if (viewMode === 'collection') {
+      return (
+        <div className="placeholder-view">
+          <h2>My Collection</h2>
+          <p>{collectionCount} cards total</p>
+          <button onClick={() => setViewMode('camera')}>Back to Scanner</button>
+        </div>
+      );
+    }
+
+    if (viewMode === 'help') {
+      return (
+        <div className="placeholder-view">
+          <h2>How to Scan</h2>
+          <ul>
+            <li>📷 Hold card steady in good light</li>
+            <li>🎯 Center the card in the frame</li>
+            <li>✨ Avoid glare and shadows</li>
+            <li>🔍 Make sure text is readable</li>
+          </ul>
+          <button onClick={() => setViewMode('camera')}>Back to Scanner</button>
+        </div>
+      );
+    }
+
+    // Camera view (default)
     return (
-      <Camera 
-        onCapture={handleCapture}
-        onClose={() => setShowCamera(false)}
-        isProcessing={isProcessing || isMatching}
-      />
+      <>
+        {/* Camera Preview */}
+        {showCamera ? (
+          <Camera 
+            onCapture={handleCapture}
+            onClose={() => setShowCamera(false)}
+            isProcessing={isProcessing || isMatching}
+          />
+        ) : (
+          <div className="camera-placeholder-container" onClick={() => setShowCamera(true)}>
+            <div className="camera-preview-box">
+              <div className="camera-icon-large">📷</div>
+              <p className="camera-tap-text">Tap to scan a card</p>
+              <p className="camera-hint">Center the card in frame</p>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Stats */}
+        <div className="quick-stats">
+          <div className="stat-item">
+            <span className="stat-value">{collectionCount}</span>
+            <span className="stat-label">cards</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-value">{currentGame}</span>
+            <span className="stat-label">game</span>
+          </div>
+        </div>
+
+        {/* Recent Scans */}
+        {scanStatus === 'saved' && (
+          <div className="recent-scan-toast">
+            ✅ Card added to collection!
+          </div>
+        )}
+      </>
     );
-  }
+  };
 
   return (
     <div className="main-app">
+      {/* Header with Menu Button */}
       <header className="app-header">
-        <div className="app-brand">
-          <h1>Card Scanner</h1>
-          <span className="card-count">{totalCards} cards loaded</span>
-        </div>
-        <div className="user-section">
-          <div className="user-info">
-            <UserIcon size={18} />
-            <span>{user.username}</span>
-          </div>
-          <button className="logout-btn" onClick={onLogout}>
-            <LogOut size={18} />
-          </button>
-        </div>
+        <button 
+          className="menu-toggle-btn"
+          onClick={() => setIsMenuOpen(true)}
+          aria-label="Open menu"
+        >
+          <span className="hamburger-icon">☰</span>
+        </button>
+        <h1 className="app-title">Card Scanner</h1>
+        <div className="header-spacer" />
       </header>
 
-      <main className="app-main">
+      {/* Main Content */}
+      <main className="app-content">
         {cardsLoading ? (
           <div className="loading-state">
             <div className="spinner-large" />
-            <p>Loading card database...</p>
+            <p>Loading {currentGame} cards...</p>
           </div>
         ) : cardsError ? (
           <div className="error-state">
@@ -169,71 +221,55 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             <button onClick={() => window.location.reload()}>Retry</button>
           </div>
         ) : (
-          <>
-            <div className="welcome-card">
-              <h2>Welcome back, {user.username}!</h2>
-              <div className="stats-row">
-                <div className="stat-box">
-                  <Library size={24} />
-                  <div>
-                    <span className="stat-number">{collectionCount}</span>
-                    <span className="stat-label">Cards in collection</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="scan-section">
-              <p className="scan-instruction">
-                Tap the button to open your camera and scan a card.
-              </p>
-              <button 
-                className="scan-btn"
-                onClick={() => setShowCamera(true)}
-                disabled={scanStatus === 'scanning' || scanStatus === 'saving'}
-              >
-                <CameraIcon size={32} />
-                <span>Scan Card</span>
-              </button>
-            </div>
-
-            {/* Scan Status Feedback */}
-            {scanStatus === 'scanning' && (
-              <div className="scan-feedback scanning">
-                <div className="spinner-large" />
-                <p>{scanProgress}</p>
-              </div>
-            )}
-
-            {scanStatus === 'not_found' && (
-              <div className="scan-feedback not-found">
-                <p>❌ No card found</p>
-                <p className="hint">Try again with better lighting</p>
-              </div>
-            )}
-
-            {scanStatus === 'error' && (
-              <div className="scan-feedback error">
-                <p>⚠️ Scan failed</p>
-                <p className="hint">Please try again</p>
-              </div>
-            )}
-
-            {scanStatus === 'saved' && (
-              <div className="scan-feedback success">
-                <p>✅ {saveMessage}</p>
-              </div>
-            )}
-
-            {saveMessage && scanStatus !== 'saved' && (
-              <div className={`save-message ${saveMessage.includes('error') || saveMessage.includes('Failed') ? 'error' : 'success'}`}>
-                {saveMessage}
-              </div>
-            )}
-          </>
+          renderContent()
         )}
       </main>
 
+      {/* Slide-out Menu */}
+      <Menu
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        user={user}
+        currentGame={currentGame}
+        onSelectGame={() => {
+          setIsMenuOpen(false);
+          setIsGameSelectorOpen(true);
+        }}
+        onViewCollection={() => {
+          setIsMenuOpen(false);
+          setViewMode('collection');
+        }}
+        onViewHelp={() => {
+          setIsMenuOpen(false);
+          setViewMode('help');
+        }}
+        onViewSettings={() => {
+          setIsMenuOpen(false);
+          setViewMode('settings');
+        }}
+        onLogout={onLogout}
+      />
+
+      {/* Game Selector Modal */}
+      {isGameSelectorOpen && (
+        <div className="game-selector-modal" onClick={() => setIsGameSelectorOpen(false)}>
+          <div className="game-selector-content" onClick={e => e.stopPropagation()}>
+            <h3>Select Game</h3>
+            {['riftbound', 'lorcana', 'magic', 'pokemon'].map(game => (
+              <button
+                key={game}
+                className={`game-option ${currentGame === game ? 'active' : ''}`}
+                onClick={() => handleGameSelect(game as Game)}
+              >
+                {game.charAt(0).toUpperCase() + game.slice(1)}
+              </button>
+            ))}
+            <button onClick={() => setIsGameSelectorOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Card Result Modal */}
       {scanResult !== null && (
         <CardResult
           match={scanResult}

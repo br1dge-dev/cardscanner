@@ -1,0 +1,320 @@
+.scan-help-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.scan-help-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.scan-help-modal {
+  position: relative;
+  width: 100%;
+  max-width: 450px;
+  max-height: 85vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.scan-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.scan-help-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scan-help-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fbbf24;
+}
+
+.scan-help-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+.scan-help-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.scan-help-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.scan-help-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.scan-help-intro {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.scan-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scan-tip {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  transition: all 0.2s;
+}
+
+.scan-tip:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.scan-tip-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(0, 255, 157, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00ff9d;
+  flex-shrink: 0;
+}
+
+.scan-tip-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scan-tip-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+}
+
+.scan-tip-description {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.scan-examples {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.scan-examples-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 16px 0;
+}
+
+.scan-example-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.scan-example {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scan-example-visual {
+  aspect-ratio: 2.5 / 3.5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scan-example-card {
+  width: 70%;
+  height: 80%;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scan-example-card-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+}
+
+.scan-example-card-text {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Good example */
+.good-example .scan-example-card-inner {
+  background: linear-gradient(135deg, rgba(0, 255, 157, 0.2) 0%, rgba(0, 217, 165, 0.3) 100%);
+  border-color: rgba(0, 255, 157, 0.4);
+  color: #00ff9d;
+}
+
+/* Bad examples */
+.bad-example-blurry .scan-example-card-inner {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  filter: blur(2px);
+}
+
+.bad-example-dark .scan-example-card-inner {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.bad-example-glare .scan-example-card-inner {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+  position: relative;
+}
+
+.bad-example-glare .scan-example-card-inner::after {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  width: 40%;
+  height: 30%;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+}
+
+.scan-example-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scan-example-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.scan-example-badge.good {
+  background: rgba(0, 255, 157, 0.2);
+  color: #00ff9d;
+}
+
+.scan-example-badge.bad {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.scan-example-label p {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+.scan-help-footer {
+  padding: 16px 20px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.scan-help-done {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #00ff9d 0%, #00d9a5 100%);
+  border: none;
+  border-radius: 12px;
+  color: #1a1a2e;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scan-help-done:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 255, 157, 0.3);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
