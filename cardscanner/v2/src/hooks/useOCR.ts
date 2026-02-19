@@ -14,12 +14,23 @@ export function useOCR() {
   const tesseractScheduler = useRef<Tesseract.Scheduler | null>(null);
 
   /**
-   * Initialize Tesseract scheduler for parallel processing
+   * Initialize Tesseract scheduler with optimized settings
    */
   const initScheduler = useCallback(async () => {
     if (!tesseractScheduler.current) {
       const scheduler = Tesseract.createScheduler();
-      const worker = await Tesseract.createWorker('eng');
+      const worker = await Tesseract.createWorker('eng', 1, {
+        logger: m => console.log('Tesseract:', m),
+        errorHandler: e => console.error('Tesseract error:', e)
+      });
+      
+      // Configure for best accuracy on trading cards
+      await worker.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/', // Only card-relevant chars
+        tessedit_pageseg_mode: '6' as any, // Assume uniform block of text
+        preserve_interword_spaces: '1',
+      });
+      
       await scheduler.addWorker(worker);
       tesseractScheduler.current = scheduler;
     }
@@ -53,10 +64,12 @@ export function useOCR() {
 
       // Step 2: OCR on FULL IMAGE (ROIs don't work well!)
       setProgress(40);
-      console.log('Running OCR on full image...');
+      console.log('Running OCR on full image with optimized settings...');
       const fullResult = await scheduler.addJob('recognize', imageDataUrl);
+      console.log('=== RAW TESSERACT OUTPUT ===');
       console.log('Full OCR text:', fullResult.data.text);
       console.log('Full OCR confidence:', fullResult.data.confidence);
+      console.log('============================');
       
       const rawText = fullResult.data.text;
       
