@@ -197,9 +197,24 @@ const handleCapture = useCallback(async (imageData: string) => {
         ) : (
           <div className="camera-placeholder-container" onClick={handleDirectCameraCapture}>
             <div className="camera-preview-box">
-              <div className="camera-icon-large">📷</div>
-              <p className="camera-tap-text">Tap to scan a card</p>
-              <p className="camera-hint">Center the card in frame</p>
+              {/* Card Scanning Guide Overlay */}
+              <div className="scan-guide">
+                <div className="scan-guide-frame">
+                  <div className="scan-guide-corners">
+                    <span className="corner top-left"></span>
+                    <span className="corner top-right"></span>
+                    <span className="corner bottom-left"></span>
+                    <span className="corner bottom-right"></span>
+                  </div>
+                  {/* ROI Highlight - unterer Bereich für Nummer/Name */}
+                  <div className="scan-guide-roi">
+                    <span className="roi-label">📄 Card Number & Name</span>
+                    <div className="roi-zone"></div>
+                  </div>
+                </div>
+              </div>
+              <p className="camera-tap-text">Tap to scan</p>
+              <p className="camera-hint">Hold card here — number at bottom</p>
             </div>
           </div>
         )}
