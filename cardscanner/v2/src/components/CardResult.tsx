@@ -96,22 +96,11 @@ export const CardResult: React.FC<CardResultProps> = ({
         <div className="card-result-content">
           {capturedImage && showCapturedImage ? (
             <div className="captured-preview-container">
-              <div className="captured-image-wrapper">
-                <img 
-                  src={capturedImage} 
-                  alt="Captured card"
-                  className="captured-preview-image"
-                />
-                {/* ROI Overlay on captured image */}
-                <div className="roi-overlay-static">
-                  <div className="roi-box-static roi-title-static">
-                    <span className="roi-label-static">Card Title</span>
-                  </div>
-                  <div className="roi-box-static roi-number-static">
-                    <span className="roi-label-static">Card Number</span>
-                  </div>
-                </div>
-              </div>
+              <img 
+                src={capturedImage} 
+                alt="Captured card"
+                className="captured-preview-image"
+              />
               <button 
                 className="toggle-image-btn"
                 onClick={() => setShowCapturedImage(false)}
