@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Cardmarket Scraper - Spiritforged Booster Box (EN, DE Seller)
-VOLLSTÄNDIG mit Lazy-Loading
+VOLLSTÄNDIG mit Lazy-Loading + Location-Validierung
 """
 
 import sqlite3
@@ -14,12 +14,29 @@ from playwright.async_api import async_playwright
 DB_PATH = os.getenv('CARDMARKET_DB_PATH', '/Users/robert/.openclaw/workspace/cardmarket.db')
 PRODUCT_URL = 'https://www.cardmarket.com/en/Riftbound/Products/Booster-Boxes/Spiritforged-Booster-Box'
 FILTER_URL = f"{PRODUCT_URL}?sellerCountry=7&language=1"
-PRODUCT_ID = 3
+PRODUCT_ID = 3  # Spiritforged Booster Box
+REQUIRED_LOCATION = "Germany"
+
+async def extract_location(row):
+    """Extrahiert Location aus aria-label oder data-bs-original-title"""
+    loc_elem = await row.query_selector('span[aria-label*="Item location:"]')
+    
+    if loc_elem:
+        aria = await loc_elem.get_attribute('aria-label') or ''
+        title = await loc_elem.get_attribute('data-bs-original-title') or ''
+        
+        for text in [aria, title]:
+            match = re.search(r'Item location:\s*(\w+)', text)
+            if match:
+                return match.group(1)
+    
+    return 'Unknown'
 
 async def scrape_spiritforged():
     """Scraper für Spiritforged Booster Box"""
     print(f"🔥 Spiritforged Booster Scraper - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"URL: {FILTER_URL}")
+    print(f"Required Location: {REQUIRED_LOCATION}")
     print("")
     
     async with async_playwright() as p:
@@ -70,16 +87,12 @@ async def scrape_spiritforged():
                     if btn:
                         visible = await btn.is_visible()
                         if visible:
-                            text = await btn.text_content()
-                            print(f"  🖱️  Klicke: {text.strip()[:30]}...")
                             await btn.click()
                             await page.wait_for_timeout(3000)
                             new_count = len(await page.query_selector_all('.article-row'))
-                            if new_count > initial_count:
-                                print(f"     → Neue Listings: {new_count} (+{new_count - initial_count})")
-                                initial_count = new_count
-                            else:
+                            if new_count <= initial_count:
                                 break
+                            initial_count = new_count
                         else:
                             break
                     else:
@@ -88,31 +101,30 @@ async def scrape_spiritforged():
             # Scrollen
             print("\n📜 Scrolle für mehr Content...")
             last_count = initial_count
-            no_change_count = 0
-            
-            for scroll_attempt in range(30):
+            no_change = 0
+            for _ in range(30):
                 await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
                 await page.wait_for_timeout(2000)
-                
-                current_count = len(await page.query_selector_all('.article-row'))
-                if current_count > last_count:
-                    print(f"  Scroll {scroll_attempt+1}: {current_count} Listings (+{current_count - last_count})")
-                    last_count = current_count
-                    no_change_count = 0
+                current = len(await page.query_selector_all('.article-row'))
+                if current > last_count:
+                    last_count = current
+                    no_change = 0
                 else:
-                    no_change_count += 1
-                    if no_change_count >= 3:
-                        print(f"  Scroll {scroll_attempt+1}: Keine neuen Listings (Ende?)")
+                    no_change += 1
+                    if no_change >= 3:
                         break
             
             final_count = len(await page.query_selector_all('.article-row'))
             print(f"\n📊 GESAMT: {final_count} Listings geladen")
             
-            # Extrahiere Listings
-            listings = []
+            # Extrahiere Listings MIT Location
+            all_listings = []
+            de_listings = []
+            non_de_listings = []
+            
             rows = await page.query_selector_all('.article-row')
             
-            for i, row in enumerate(rows):
+            for row in rows:
                 try:
                     seller_elem = await row.query_selector('a[href*="/Users/"]')
                     seller = await seller_elem.text_content() if seller_elem else 'Unknown'
@@ -123,74 +135,90 @@ async def scrape_spiritforged():
                     match = re.search(r'([\d,]+)\s*€', price_text or '')
                     price = float(match.group(1).replace(',', '.')) if match else 0
                     
-                    qty_elem = await row.query_selector('.badge, .amount')
+                    qty_elem = await row.query_selector('.badge, .amount, .item-count')
                     qty_text = await qty_elem.text_content() if qty_elem else '1'
                     try:
-                        quantity = int(re.search(r'\d+', qty_text or '1').group())
+                        qty = int(re.search(r'\d+', qty_text or '1').group())
                     except:
-                        quantity = 1
+                        qty = 1
                     
-                    # Nur gültige Listings (Seller bekannt, Preis > 0)
+                    # LOCATION extrahieren
+                    location = await extract_location(row)
+                    
                     if seller and seller != 'Unknown' and price > 0:
-                        listings.append({'seller': seller, 'price': price, 'quantity': quantity})
+                        listing = {'seller': seller, 'price': price, 'quantity': qty, 'location': location}
+                        all_listings.append(listing)
+                        
+                        if location == REQUIRED_LOCATION:
+                            de_listings.append(listing)
+                        else:
+                            non_de_listings.append(listing)
+                            
                 except Exception as e:
-                    print(f"  ⚠️ Fehler bei Zeile {i+1}: {e}")
                     continue
             
-            print(f"✅ Erfolgreich geparst: {len(listings)} Listings (mit gültigem Preis)")
+            print(f"✅ Erfolgreich geparst: {len(all_listings)} Listings")
+            print(f"   🇩🇪 Germany: {len(de_listings)}")
+            print(f"   🌍 Other: {len(non_de_listings)}")
             
-            # Floor nur aus gültigen Preisen berechnen
-            floor_price = min([l['price'] for l in listings]) if listings else None
-            if not floor_price:
-                print(f"⚠️ Kein gültiger Floor-Price gefunden")
+            if non_de_listings:
+                print(f"\n🚨 WARNUNG: {len(non_de_listings)} NON-DE Listings gefunden!")
+                for l in non_de_listings[:5]:
+                    print(f"   - {l['seller']}: {l['price']}€ ({l['location']})")
+            
+            if not de_listings:
+                print(f"❌ KEINE DEUTSCHEN LISTINGS GEFUNDEN!")
                 await browser.close()
                 return 0, None
             
+            floor_price = min([l['price'] for l in de_listings])
+            print(f"\n💶 Floor-Price (nur DE): {floor_price:.2f}€")
+            
             await browser.close()
             
-            # Speichern in DB
-            try:
-                save_to_db(listings, floor_price)
-                print(f"💶 Floor-Price: {floor_price:.2f}€ (gespeichert)")
-                return len(listings), floor_price
-            except Exception as e:
-                print(f"❌ DB-Fehler: {e}")
-                return 0, None
+            save_to_db(all_listings, floor_price, len(de_listings))
+            return len(all_listings), floor_price
             
         except Exception as e:
             await browser.close()
             print(f"❌ Fehler: {e}")
             raise
 
-def save_to_db(listings, floor_price):
+def save_to_db(listings, floor_price, de_count):
     """Speichert in SQLite"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
+    non_de = [l for l in listings if l['location'] != REQUIRED_LOCATION]
+    
     cursor.execute('''
         INSERT INTO scrapes (product_id, total_listings, floor_price, filters_applied)
         VALUES (?, ?, ?, 'sellerCountry=7&language=1')
-    ''', (PRODUCT_ID, len(listings), floor_price))
+    ''', (PRODUCT_ID, de_count, floor_price))
     
     scrape_id = cursor.lastrowid
     
     for listing in listings:
         cursor.execute('''
-            INSERT INTO listings (scrape_id, seller, price, quantity, location)
-            VALUES (?, ?, ?, ?, 'Germany')
-        ''', (scrape_id, listing['seller'], listing['price'], listing['quantity']))
+            INSERT INTO listings (scrape_id, seller, price, quantity, location, language, condition_notes)
+            VALUES (?, ?, ?, ?, ?, 'English', ?)
+        ''', (scrape_id, listing['seller'], listing['price'], listing['quantity'], 
+              listing['location'], 'NON-DE' if listing['location'] != REQUIRED_LOCATION else None))
     
     conn.commit()
     
-    # Verkaufsverdacht prüfen
+    # Verkaufsverdacht prüfen (nur auf DE-Listings!)
     check_suspected_sales(cursor)
     
     conn.commit()
     conn.close()
-    print(f"✅ Gespeichert: Scrape #{scrape_id}")
+    
+    if non_de:
+        print(f"⚠️  {len(non_de)} non-DE Listings gespeichert (markiert)")
+    print(f"✅ Gespeichert: Scrape #{scrape_id} ({de_count} DE Listings)")
 
 def check_suspected_sales(cursor):
-    """Prüft auf fehlende Seller (Verkaufsverdacht)"""
+    """Prüft auf fehlende Seller (Verkaufsverdacht) - nur DE Listings!"""
     cursor.execute('SELECT id FROM scrapes WHERE product_id = ? ORDER BY id DESC LIMIT 2', (PRODUCT_ID,))
     scrapes = cursor.fetchall()
     
@@ -201,14 +229,15 @@ def check_suspected_sales(cursor):
     current_scrape = scrapes[0][0]
     previous_scrape = scrapes[1][0]
     
+    # Nur DE Listings vergleichen!
     cursor.execute('''
         WITH prev_prices AS (
             SELECT seller, price,
                    NTILE(4) OVER (ORDER BY price) as quartile
-            FROM listings WHERE scrape_id = ?
+            FROM listings WHERE scrape_id = ? AND location = 'Germany'
         ),
         current_sellers AS (
-            SELECT DISTINCT seller FROM listings WHERE scrape_id = ?
+            SELECT DISTINCT seller FROM listings WHERE scrape_id = ? AND location = 'Germany'
         )
         SELECT p.seller, p.price 
         FROM prev_prices p
@@ -227,4 +256,4 @@ def check_suspected_sales(cursor):
 
 if __name__ == '__main__':
     count, floor = asyncio.run(scrape_spiritforged())
-    print(f"\n🏁 FERTIG: {count} Listings, Floor: {floor:.2f}€" if floor else f"\n🏁 FERTIG: {count} Listings")
+    print(f"\n🏁 FERTIG: {count} Listings, Floor: {floor:.2f}€" if floor else f"\n🏁 FERTIG: Fehler!")
