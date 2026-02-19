@@ -33,12 +33,16 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const { processImage, isProcessing, terminateWorker } = useOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
 
-  // Load user's collection count on mount
+  // Load user's collection data on mount
   useEffect(() => {
     const loadCollection = async () => {
       const result = await dotGGClient.getUserData(user);
       if (result.success && result.data) {
-        setCollectionCount(result.data.collection.length);
+        // Calculate total cards (sum of all quantities, not just unique entries)
+        const totalCards = result.data.collection.reduce((sum, item) => {
+          return sum + (parseInt(item.standard) || 0);
+        }, 0);
+        setCollectionCount(totalCards);
       }
     };
     loadCollection();
@@ -91,7 +95,14 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       if (result.success) {
         setScanStatus('saved');
         setSaveMessage(`✓ Added ${quantity}x ${scanResult?.card.name || 'card'} to collection!`);
-        setCollectionCount(prev => prev + quantity);
+        // Reload actual collection count from API to ensure accuracy
+        const userData = await dotGGClient.getUserData(user);
+        if (userData.success && userData.data) {
+          const totalCards = userData.data.collection.reduce((sum, item) => {
+            return sum + (parseInt(item.standard) || 0);
+          }, 0);
+          setCollectionCount(totalCards);
+        }
         setTimeout(() => {
           setScanResult(null);
           setCapturedImage(null);
