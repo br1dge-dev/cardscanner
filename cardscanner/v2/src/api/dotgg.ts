@@ -8,7 +8,7 @@ import type { HttpResponse } from '@capacitor/core';
 import type { CollectionCard, User } from '../types';
 
 const API_BASE_URL = 'https://api.dotgg.gg';
-const GAME = 'lorcana'; // Riftbound is under 'lorcana' in dot.gg
+const GAME = 'riftbound';
 
 interface ApiResponse<T> {
   success: boolean;
