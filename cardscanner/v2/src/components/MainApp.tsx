@@ -17,6 +17,8 @@ interface MainAppProps {
   onLogout: () => void;
 }
 
+type ScanStatus = 'idle' | 'scanning' | 'found' | 'not_found' | 'saving' | 'saved' | 'error';
+
 export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -24,6 +26,8 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [collectionCount, setCollectionCount] = useState(0);
+  const [scanStatus, setScanStatus] = useState<ScanStatus>('idle');
+  const [scanProgress, setScanProgress] = useState('');
 
   const { cards, isLoading: cardsLoading, error: cardsError, totalCards } = useCards();
   const { processImage, isProcessing, terminateWorker } = useOCR();
@@ -48,21 +52,29 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   }, [terminateWorker]);
 
   const handleCapture = useCallback(async (imageData: string) => {
-    // Store the captured image
     setCapturedImage(imageData);
+    setScanStatus('scanning');
+    setScanProgress('Reading card text...');
     
     try {
       // Process image with OCR
       const ocrData = await processImage(imageData);
+      setScanProgress('Finding matching card...');
       
       // Find matching cards
       const result = await findMatches(ocrData);
       
-      // Show result
-      setScanResult(result.bestMatch);
+      if (result.bestMatch) {
+        setScanStatus('found');
+        setScanResult(result.bestMatch);
+      } else {
+        setScanStatus('not_found');
+        setScanResult(null);
+      }
       setShowCamera(false);
     } catch (err) {
       console.error('Scan error:', err);
+      setScanStatus('error');
       setScanResult(null);
       setShowCamera(false);
     }
@@ -70,32 +82,40 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
   const handleSaveCard = useCallback(async (cardId: string, quantity: number) => {
     setIsSaving(true);
-    setSaveMessage(null);
+    setScanStatus('saving');
+    setSaveMessage('Adding to collection...');
 
     try {
       const result = await dotGGClient.addCardToCollection(user, cardId, quantity);
       
       if (result.success) {
-        setSaveMessage('Card added to collection!');
+        setScanStatus('saved');
+        setSaveMessage(`✓ Added ${quantity}x ${scanResult?.card.name || 'card'} to collection!`);
         setCollectionCount(prev => prev + quantity);
         setTimeout(() => {
           setScanResult(null);
           setCapturedImage(null);
           setSaveMessage(null);
-        }, 1500);
+          setScanStatus('idle');
+        }, 2000);
       } else {
+        setScanStatus('error');
         setSaveMessage(result.error || 'Failed to save card');
       }
     } catch (err) {
+      setScanStatus('error');
       setSaveMessage('Network error. Please try again.');
     } finally {
       setIsSaving(false);
     }
-  }, [user]);
+  }, [user, scanResult]);
 
   const handleCloseResult = useCallback(() => {
     setScanResult(null);
     setCapturedImage(null);
+    setScanStatus('idle');
+    setScanProgress('');
+    setSaveMessage(null);
   }, []);
 
   if (showCamera) {
@@ -159,13 +179,42 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
               <button 
                 className="scan-btn"
                 onClick={() => setShowCamera(true)}
+                disabled={scanStatus === 'scanning' || scanStatus === 'saving'}
               >
                 <CameraIcon size={32} />
                 <span>Scan Card</span>
               </button>
             </div>
 
-            {saveMessage && (
+            {/* Scan Status Feedback */}
+            {scanStatus === 'scanning' && (
+              <div className="scan-feedback scanning">
+                <div className="spinner-large" />
+                <p>{scanProgress}</p>
+              </div>
+            )}
+
+            {scanStatus === 'not_found' && (
+              <div className="scan-feedback not-found">
+                <p>❌ No card found</p>
+                <p className="hint">Try again with better lighting</p>
+              </div>
+            )}
+
+            {scanStatus === 'error' && (
+              <div className="scan-feedback error">
+                <p>⚠️ Scan failed</p>
+                <p className="hint">Please try again</p>
+              </div>
+            )}
+
+            {scanStatus === 'saved' && (
+              <div className="scan-feedback success">
+                <p>✅ {saveMessage}</p>
+              </div>
+            )}
+
+            {saveMessage && scanStatus !== 'saved' && (
               <div className={`save-message ${saveMessage.includes('error') || saveMessage.includes('Failed') ? 'error' : 'success'}`}>
                 {saveMessage}
               </div>
