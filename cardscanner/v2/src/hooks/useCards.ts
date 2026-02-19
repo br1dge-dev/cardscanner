@@ -39,6 +39,14 @@ export function useCards() {
         card_type: card.card_type || card.type
       }));
       
+      console.log('=== CARDS DEBUG ===');
+      console.log('Loaded', normalizedCards.length, 'cards');
+      if (normalizedCards.length > 0) {
+        console.log('First card:', normalizedCards[0]);
+        console.log('Sample numbers:', normalizedCards.slice(0, 5).map(c => c.number));
+      }
+      console.log('===================');
+      
       setCards(normalizedCards);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load cards';

@@ -152,11 +152,17 @@ export function useCardMatching(cards: Card[], options: MatchingOptions = {}) {
     setIsMatching(true);
 
     try {
+      console.log('=== MATCHING DEBUG ===');
+      console.log('OCR Name:', ocrData.name);
+      console.log('OCR Number:', ocrData.number);
+      console.log('Total cards in DB:', cards.length);
+
       const matches: CardMatch[] = [];
       let bestMatch: CardMatch | null = null;
 
       // Try matching by number first (more reliable)
       const numberMatch = matchByNumber(ocrData.number);
+      console.log('Number match result:', numberMatch);
       if (numberMatch) {
         matches.push(numberMatch);
         bestMatch = numberMatch;
@@ -164,6 +170,7 @@ export function useCardMatching(cards: Card[], options: MatchingOptions = {}) {
 
       // Also try matching by name
       const nameMatches = matchByName(ocrData.name);
+      console.log('Name matches found:', nameMatches.length);
       
       // Merge matches, avoiding duplicates
       for (const nameMatch of nameMatches) {
@@ -190,6 +197,10 @@ export function useCardMatching(cards: Card[], options: MatchingOptions = {}) {
       if (!bestMatch && sortedMatches.length > 0) {
         bestMatch = sortedMatches[0];
       }
+
+      console.log('Best match:', bestMatch);
+      console.log('Total matches:', sortedMatches.length);
+      console.log('======================');
 
       return {
         matches: sortedMatches,

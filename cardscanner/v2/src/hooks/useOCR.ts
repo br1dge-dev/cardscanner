@@ -15,21 +15,22 @@ interface ROIDefinition {
 
 // ROI definitions for card scanning
 // Card layout: Title in upper-middle, number in lower portion
+// INCREASED size for better tolerance
 export const DEFAULT_ROIS: ROIDefinition[] = [
   {
-    // Card Title Region - upper middle area
-    x: 0.15,
-    y: 0.08,
-    width: 0.70,
-    height: 0.12,
+    // Card Title Region - upper middle area (expanded)
+    x: 0.10,
+    y: 0.05,
+    width: 0.80,
+    height: 0.20,
     label: 'title'
   },
   {
-    // Card Number Region - bottom area
-    x: 0.10,
-    y: 0.82,
-    width: 0.80,
-    height: 0.10,
+    // Card Number Region - bottom area (expanded)
+    x: 0.05,
+    y: 0.75,
+    width: 0.90,
+    height: 0.20,
     label: 'number'
   }
 ];
@@ -132,6 +133,13 @@ export function useOCR(options: OCROptions = {}) {
 
       setProgress(100);
 
+      // Debug logging
+      console.log('=== OCR DEBUG ===');
+      console.log('Raw title OCR:', nameResult.text);
+      console.log('Raw number OCR:', numberResult.text);
+      console.log('Title confidence:', nameResult.confidence);
+      console.log('Number confidence:', numberResult.confidence);
+
       // Clean up extracted text
       const cleanName = nameResult.text
         .replace(/\n/g, ' ')
@@ -143,6 +151,10 @@ export function useOCR(options: OCROptions = {}) {
         .replace(/\s+/g, '')
         .replace(/[^a-zA-Z0-9\-]/g, '')
         .trim();
+
+      console.log('Cleaned name:', cleanName);
+      console.log('Cleaned number:', cleanNumber);
+      console.log('=================');
 
       return {
         name: cleanName,
