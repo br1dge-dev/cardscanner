@@ -432,3 +432,47 @@
   margin-bottom: 12px;
   width: 100%;
 }
+
+/* Foil Toggle */
+.foil-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 140, 0, 0.1) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.foil-toggle:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 140, 0, 0.2) 100%);
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.foil-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #ffd700;
+  cursor: pointer;
+}
+
+.foil-toggle-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* Foil Button Style */
+.save-btn.foil-btn {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+  color: #1a1a2e;
+}
+
+.save-btn.foil-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+}

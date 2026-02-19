@@ -138,9 +138,10 @@ class DotGGClient {
     user: User,
     cardId: string,
     quantity: number = 1,
+    isFoil: boolean = false,
     game?: Game
   ): Promise<ApiResponse<{ error: boolean; newCount: number }>> {
-    return this.saveCard(user, cardId, 'standard', quantity, 0, 0, game);
+    return this.saveCard(user, cardId, isFoil ? 'foil' : 'standard', quantity, 0, 0, game);
   }
 
   async syncCollection(

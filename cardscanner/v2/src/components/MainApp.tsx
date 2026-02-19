@@ -94,15 +94,15 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     }
   }, [processImage, findMatches]);
 
-  const handleSaveCard = useCallback(async (cardId: string, quantity: number) => {
+  const handleSaveCard = useCallback(async (cardId: string, quantity: number, isFoil: boolean = false) => {
     setIsSaving(true);
 
     try {
-      const result = await dotGGClient.addCardToCollection(user, cardId, quantity);
+      const result = await dotGGClient.addCardToCollection(user, cardId, quantity, isFoil);
       
       if (result.success) {
         setScanStatus('saved');
-        await loadCollection(); // Reload to get accurate count
+        await loadCollection();
         setTimeout(() => {
           setScanResult(null);
           setCapturedImage(null);
