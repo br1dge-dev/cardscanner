@@ -1,6 +1,6 @@
 /**
- * Image Preprocessing Utilities
- * Optimizes card images for better OCR results
+ * Image Preprocessing Utilities - LIGHT version
+ * Gentle optimizations for OCR without destroying image quality
  */
 
 export async function preprocessImage(imageDataUrl: string): Promise<string> {
@@ -26,11 +26,11 @@ export async function preprocessImage(imageDataUrl: string): Promise<string> {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
 
-      // Apply processing pipeline
+      // LIGHT processing pipeline - keep it bright!
       applyGrayscale(data);
-      applyContrast(data, 1.4); // Increase contrast by 40%
-      applySharpening(data, canvas.width, canvas.height);
-      applyThreshold(data, 120); // Light thresholding
+      applyContrast(data, 1.15); // Only 15% contrast increase (was 40%)
+      applyLightSharpening(data, canvas.width, canvas.height);
+      // NO thresholding - keeps image bright
 
       // Put processed data back
       ctx.putImageData(imageData, 0, 0);
@@ -57,7 +57,7 @@ function applyGrayscale(data: Uint8ClampedArray): void {
 }
 
 /**
- * Adjust contrast
+ * Adjust contrast - GENTLE
  */
 function applyContrast(data: Uint8ClampedArray, factor: number): void {
   const intercept = 128 * (1 - factor);
@@ -70,16 +70,16 @@ function applyContrast(data: Uint8ClampedArray, factor: number): void {
 }
 
 /**
- * Simple sharpening filter
+ * Very light sharpening - don't overdo it
  */
-function applySharpening(data: Uint8ClampedArray, width: number, height: number): void {
+function applyLightSharpening(data: Uint8ClampedArray, width: number, height: number): void {
   const output = new Uint8ClampedArray(data);
   
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = (y * width + x) * 4;
       
-      // Sharpen kernel
+      // Gentler sharpen kernel
       for (let c = 0; c < 3; c++) {
         const center = data[idx + c];
         const top = data[((y - 1) * width + x) * 4 + c];
@@ -87,7 +87,8 @@ function applySharpening(data: Uint8ClampedArray, width: number, height: number)
         const left = data[(y * width + x - 1) * 4 + c];
         const right = data[(y * width + x + 1) * 4 + c];
         
-        const sharpened = 5 * center - top - bottom - left - right;
+        // Reduced sharpening strength
+        const sharpened = center + 0.3 * (center - (top + bottom + left + right) / 4);
         output[idx + c] = Math.min(255, Math.max(0, sharpened));
       }
     }
@@ -96,18 +97,5 @@ function applySharpening(data: Uint8ClampedArray, width: number, height: number)
   // Copy output back
   for (let i = 0; i < data.length; i++) {
     data[i] = output[i];
-  }
-}
-
-/**
- * Apply threshold to make text more distinct
- */
-function applyThreshold(data: Uint8ClampedArray, threshold: number): void {
-  for (let i = 0; i < data.length; i += 4) {
-    const gray = data[i];
-    const newValue = gray > threshold ? Math.min(255, gray + 20) : Math.max(0, gray - 20);
-    data[i] = newValue;
-    data[i + 1] = newValue;
-    data[i + 2] = newValue;
   }
 }
