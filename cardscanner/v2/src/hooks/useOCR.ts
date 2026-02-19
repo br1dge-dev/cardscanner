@@ -182,14 +182,32 @@ export function useOCR(options: OCROptions = {}) {
         console.log('Title ROI extracted, running OCR...');
         
         const titleResult = await scheduler.addJob('recognize', titleImage);
-        console.log('Title OCR result:', titleResult.data);
+        console.log('Title OCR raw result:', titleResult.data.text);
         
-        nameText = titleResult.data.text
-          .replace(/\s+/g, ' ')
-          .replace(/[^a-zA-Z0-9\s\-']/g, '')
-          .trim();
+        // Smart title extraction: find the longest clean line (likely the card name)
+        const lines = titleResult.data.text
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => l.length > 2 && l.length < 50); // Reasonable name length
+        
+        // Sort by length (longest first) and clean
+        const cleanLines = lines
+          .map(l => l.replace(/[^a-zA-Z0-9\s\-']/g, '').trim())
+          .filter(l => l.length > 2);
+        
+        if (cleanLines.length > 0) {
+          // Take the longest line as the title
+          nameText = cleanLines.sort((a, b) => b.length - a.length)[0];
+          console.log('Extracted title from lines:', cleanLines, '→', nameText);
+        } else {
+          // Fallback to full text
+          nameText = titleResult.data.text
+            .replace(/\s+/g, ' ')
+            .replace(/[^a-zA-Z0-9\s\-']/g, '')
+            .trim();
+        }
         nameConfidence = titleResult.data.confidence / 100;
-        console.log('Extracted name:', nameText, 'Confidence:', nameConfidence);
+        console.log('Final name:', nameText, 'Confidence:', nameConfidence);
       }
 
       // Step 4: Extract and process number ROI
@@ -203,14 +221,28 @@ export function useOCR(options: OCROptions = {}) {
         console.log('Number ROI extracted, running OCR...');
         
         const numberResult = await scheduler.addJob('recognize', numberImage);
-        console.log('Number OCR result:', numberResult.data);
+        console.log('Number OCR raw result:', numberResult.data.text);
         
-        numberText = numberResult.data.text
-          .replace(/\s+/g, '')
-          .replace(/[^a-zA-Z0-9\-]/g, '')
-          .trim();
-        numberConfidence = numberResult.data.confidence / 100;
-        console.log('Extracted number:', numberText, 'Confidence:', numberConfidence);
+        // Extract card number using regex pattern (e.g., OGN-170, SFD-001)
+        // Pattern: 2-3 uppercase letters, optional space/dash, 3 digits, optional /total
+        const cardNumberPattern = /([A-Z]{2,3})\s*[-]?\s*(\d{3})(?:\/(\d+))?/;
+        const rawText = numberResult.data.text;
+        const match = rawText.match(cardNumberPattern);
+        
+        if (match) {
+          // Found a card number: OGN-170 or OGN - 170/298
+          numberText = `${match[1]}-${match[2]}`;
+          console.log('Extracted card number via regex:', numberText);
+          numberConfidence = 0.9; // High confidence when pattern matches
+        } else {
+          // Fallback: clean up the text
+          numberText = rawText
+            .replace(/\s+/g, '')
+            .replace(/[^a-zA-Z0-9\-]/g, '')
+            .trim();
+          numberConfidence = numberResult.data.confidence / 100;
+        }
+        console.log('Final number:', numberText, 'Confidence:', numberConfidence);
       }
 
       setProgress(90);
