@@ -65,10 +65,22 @@ export function useOCR() {
       // Step 2: OCR on FULL IMAGE (ROIs don't work well!)
       setProgress(40);
       console.log('Running OCR on full image with optimized settings...');
+      console.log('Image data URL length:', imageDataUrl.length);
+      
+      // Add timeout and better error handling
       const fullResult = await scheduler.addJob('recognize', imageDataUrl);
+      
       console.log('=== RAW TESSERACT OUTPUT ===');
       console.log('Full OCR text:', fullResult.data.text);
       console.log('Full OCR confidence:', fullResult.data.confidence);
+      
+      // Log detailed block info if available
+      if (fullResult.data.blocks && fullResult.data.blocks.length > 0) {
+        console.log('Text blocks found:', fullResult.data.blocks.length);
+        fullResult.data.blocks.forEach((block: any, i: number) => {
+          console.log(`Block ${i}:`, block.text, `(confidence: ${block.confidence})`);
+        });
+      }
       console.log('============================');
       
       const rawText = fullResult.data.text;
