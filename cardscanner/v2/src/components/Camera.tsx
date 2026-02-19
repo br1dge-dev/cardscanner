@@ -20,10 +20,11 @@ export const Camera: React.FC<CameraProps> = ({
   const handleTakePhoto = async () => {
     try {
       const image = await CapacitorCamera.getPhoto({
-        quality: 90,
+        quality: 100, // Maximum quality
         allowEditing: false,
         resultType: CameraResultType.Base64,
-        source: CameraSource.Camera
+        source: CameraSource.Camera,
+        width: 2000 // Higher resolution for better OCR
       });
 
       if (image.base64String) {
