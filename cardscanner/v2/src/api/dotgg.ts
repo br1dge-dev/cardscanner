@@ -5,10 +5,10 @@
  */
 import { CapacitorHttp } from '@capacitor/core';
 import type { HttpResponse } from '@capacitor/core';
-import type { CollectionCard, User } from '../types';
+import type { CollectionCard, User, Game } from '../types';
 
 const API_BASE_URL = 'https://api.dotgg.gg';
-const GAME = 'riftbound';
+const DEFAULT_GAME: Game = 'riftbound';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -33,6 +33,16 @@ interface UserData {
 }
 
 class DotGGClient {
+  private currentGame: Game = DEFAULT_GAME;
+
+  setGame(game: Game) {
+    this.currentGame = game;
+  }
+
+  getGame(): Game {
+    return this.currentGame;
+  }
+
   private getAuthHeaders(user: User) {
     return {
       'Content-Type': 'application/json',
@@ -48,12 +58,13 @@ class DotGGClient {
     return response.data as T;
   }
 
-  async getUserData(user: User): Promise<ApiResponse<UserData>> {
+  async getUserData(user: User, game?: Game): Promise<ApiResponse<UserData>> {
     try {
+      const targetGame = game || this.currentGame;
       const response: HttpResponse = await CapacitorHttp.get({
         url: `${API_BASE_URL}/cgfw/getuserdata`,
         headers: this.getAuthHeaders(user),
-        params: { game: GAME }
+        params: { game: targetGame }
       });
 
       if (response.status === 401) {
@@ -81,13 +92,15 @@ class DotGGClient {
     type: 'standard' | 'foil' = 'standard',
     count: number = 1,
     trade: number = 0,
-    wish: number = 0
+    wish: number = 0,
+    game?: Game
   ): Promise<ApiResponse<{ error: boolean; newCount: number }>> {
     try {
+      const targetGame = game || this.currentGame;
       const response: HttpResponse = await CapacitorHttp.post({
         url: `${API_BASE_URL}/cgfw/savecollection`,
         headers: this.getAuthHeaders(user),
-        params: { game: GAME },
+        params: { game: targetGame },
         data: {
           card: cardId,
           type,
@@ -124,16 +137,19 @@ class DotGGClient {
   async addCardToCollection(
     user: User,
     cardId: string,
-    quantity: number = 1
+    quantity: number = 1,
+    game?: Game
   ): Promise<ApiResponse<{ error: boolean; newCount: number }>> {
-    return this.saveCard(user, cardId, 'standard', quantity);
+    return this.saveCard(user, cardId, 'standard', quantity, 0, 0, game);
   }
 
   async syncCollection(
     user: User,
-    localCards: CollectionCard[]
+    localCards: CollectionCard[],
+    game?: Game
   ): Promise<ApiResponse<{ error: boolean; synced: number }>> {
     try {
+      const targetGame = game || this.currentGame;
       const items = localCards.map(card => ({
         card: card.cardId,
         standard: String(card.quantity),
@@ -145,7 +161,7 @@ class DotGGClient {
       const response: HttpResponse = await CapacitorHttp.post({
         url: `${API_BASE_URL}/cgfw/synclocalcollection`,
         headers: this.getAuthHeaders(user),
-        params: { game: GAME },
+        params: { game: targetGame },
         data: { items }
       });
 

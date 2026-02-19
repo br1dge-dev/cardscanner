@@ -1,3 +1,7 @@
+/**
+ * MainApp Styles - Clean, modern design with direct camera access
+ */
+
 .main-app {
   min-height: 100vh;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -5,81 +9,160 @@
   flex-direction: column;
 }
 
+/* Header */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.app-brand {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.menu-toggle-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  padding: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
 }
 
-.app-brand h1 {
-  font-size: 20px;
-  font-weight: 700;
+.menu-toggle-btn:hover {
+  opacity: 0.8;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 600;
   color: white;
   margin: 0;
 }
 
-.card-count {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+.header-spacer {
+  width: 40px;
 }
 
-.user-section {
+/* Main Content */
+.app-content {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
 }
 
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
-}
-
-.logout-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+/* Camera Placeholder */
+.camera-placeholder-container {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.app-main {
-  flex: 1;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.loading-state {
+.camera-preview-box {
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 3/4;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 16px;
+  transition: all 0.2s;
+}
+
+.camera-preview-box:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.camera-icon-large {
+  font-size: 64px;
+  opacity: 0.6;
+}
+
+.camera-tap-text {
+  font-size: 18px;
+  color: white;
+  font-weight: 500;
+  margin: 0;
+}
+
+.camera-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+/* Quick Stats */
+.quick-stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #00ff9d;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+/* Recent Scan Toast */
+.recent-scan-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 255, 157, 0.9);
+  color: #1a1a2e;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Loading & Error States */
+.loading-state,
+.error-state {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -92,15 +175,8 @@
   animation: spin 1s linear infinite;
 }
 
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  flex: 1;
-  color: rgba(255, 255, 255, 0.8);
-  text-align: center;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .error-state button {
@@ -110,205 +186,94 @@
   color: white;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
-.error-state button:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.welcome-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 24px;
-}
-
-.welcome-card h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: white;
-  margin: 0 0 20px 0;
-}
-
-.stats-row {
-  display: flex;
-  gap: 16px;
-}
-
-.stat-box {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: rgba(0, 255, 157, 0.1);
-  border: 1px solid rgba(0, 255, 157, 0.2);
-  border-radius: 12px;
-  color: #00ff9d;
-}
-
-.stat-box > div {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-number {
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: rgba(0, 255, 157, 0.7);
-}
-
-.scan-section {
+/* Placeholder Views */
+.placeholder-view {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 20px;
   text-align: center;
+  color: white;
+  padding: 20px;
 }
 
-.scan-instruction {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-  max-width: 280px;
-  line-height: 1.5;
+.placeholder-view h2 {
+  font-size: 24px;
   margin: 0;
 }
 
-.scan-btn {
+.placeholder-view ul {
+  text-align: left;
+  line-height: 2;
+  font-size: 16px;
+}
+
+.placeholder-view button {
+  padding: 12px 24px;
+  background: #00ff9d;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Game Selector Modal */
+.game-selector-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  width: 160px;
-  height: 160px;
-  background: linear-gradient(135deg, #00ff9d 0%, #00d9a5 100%);
-  border: none;
-  border-radius: 50%;
-  color: #1a1a2e;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 8px 32px rgba(0, 255, 157, 0.3);
+  z-index: 1000;
 }
 
-.scan-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 12px 40px rgba(0, 255, 157, 0.4);
-}
-
-.scan-btn:active {
-  transform: scale(0.98);
-}
-
-.scan-btn span {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.save-message {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  animation: slideUpMessage 0.3s ease;
-  z-index: 1002;
-}
-
-.save-message.success {
-  background: rgba(0, 255, 157, 0.9);
-  color: #1a1a2e;
-}
-
-.save-message.error {
-  background: rgba(239, 68, 68, 0.9);
-  color: white;
-}
-
-/* Scan Status Feedback */
-.scan-feedback {
+.game-selector-content {
+  background: #1a1a2e;
+  padding: 24px;
+  border-radius: 16px;
+  min-width: 280px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 20px;
-  border-radius: 12px;
+  gap: 12px;
+}
+
+.game-selector-content h3 {
+  color: white;
+  margin: 0 0 12px 0;
   text-align: center;
-  animation: fadeIn 0.3s ease;
 }
 
-.scan-feedback p {
-  margin: 0;
+.game-option {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: white;
   font-size: 16px;
-  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.scan-feedback .hint {
-  font-size: 13px;
-  opacity: 0.7;
+.game-option:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.scan-feedback.scanning {
+.game-option.active {
+  border-color: #00ff9d;
   background: rgba(0, 255, 157, 0.1);
-  border: 1px solid rgba(0, 255, 157, 0.3);
-  color: #00ff9d;
 }
 
-.scan-feedback.not-found {
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.3);
-  color: #ffc107;
-}
-
-.scan-feedback.error {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-}
-
-.scan-feedback.success {
-  background: rgba(0, 255, 157, 0.2);
-  border: 1px solid rgba(0, 255, 157, 0.4);
-  color: #00ff9d;
-}
-
-.scan-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-@keyframes slideUpMessage {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Responsive adjustments */
+/* Responsive */
 @media (min-width: 768px) {
   .main-app {
     max-width: 600px;

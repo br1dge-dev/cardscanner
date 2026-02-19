@@ -2,6 +2,8 @@
  * Card type definitions
  */
 
+export type Game = 'riftbound' | 'lorcana' | 'magic' | 'pokemon' | 'yugioh' | 'onepiece';
+
 export interface Card {
   id: string;           // Card ID like "001-001"
   name: string;         // Card name
