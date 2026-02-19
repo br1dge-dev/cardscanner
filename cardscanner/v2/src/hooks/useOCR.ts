@@ -15,23 +15,23 @@ interface ROIDefinition {
 }
 
 // ROI definitions for Riftbound card layout
-// Title: Top 15-35% of card (centered)
-// Number: Bottom 10-25% (left side where set code is)
+// Title: MIDDLE of card (purple box area, 50-65% from top)
+// Number: BOTTOM LEFT (set code like OGN-170, 88-95% from top)
 export const DEFAULT_ROIS: ROIDefinition[] = [
   {
-    // Card Title Region - upper area (15-35% from top)
-    x: 0.15,
-    y: 0.15,
-    width: 0.70,
-    height: 0.20,
+    // Card Title Region - MIDDLE of card where purple box is
+    x: 0.10,
+    y: 0.52,
+    width: 0.80,
+    height: 0.12,
     label: 'title'
   },
   {
-    // Card Number/Set Code Region - bottom left area (10-25% from bottom)
+    // Card Number Region - BOTTOM LEFT corner (OGN-170)
     x: 0.05,
-    y: 0.75,
-    width: 0.45,
-    height: 0.15,
+    y: 0.88,
+    width: 0.40,
+    height: 0.08,
     label: 'number'
   }
 ];
