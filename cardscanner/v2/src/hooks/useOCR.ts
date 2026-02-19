@@ -5,7 +5,6 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
-import { preprocessImage } from '../utils/imagePreprocessing';
 import type { ROIMetadata } from '../types';
 
 export interface OCRDebugInfo {
@@ -14,6 +13,46 @@ export interface OCRDebugInfo {
   processedImage: string;
   potentialTitles: string[];
   numberMatch: string | null;
+}
+
+/**
+ * Crop image to ROI (Region of Interest) - bottom area where card info is
+ * Crops to 55%-90% of height, keeping full width
+ */
+function cropToROI(imageDataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      // Crop region: bottom area where number and name are
+      // Start at 55% from top, take 35% of height
+      const cropY = Math.floor(img.height * 0.55);
+      const cropHeight = Math.floor(img.height * 0.35);
+      const cropWidth = img.width;
+      
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+
+      // Draw cropped region
+      ctx.drawImage(
+        img,
+        0, cropY, cropWidth, cropHeight,  // source
+        0, 0, cropWidth, cropHeight        // destination
+      );
+
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
+    };
+    
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = imageDataUrl;
+  });
 }
 
 export function useOCR() {
@@ -59,7 +98,7 @@ export function useOCR() {
 
   const processImage = useCallback(async (
     imageDataUrl: string,
-    enablePreprocessing: boolean = true
+    _enablePreprocessing: boolean = false
   ): Promise<ROIMetadata & { debug?: OCRDebugInfo }> => {
     setIsProcessing(true);
     setProgress(0);
@@ -73,22 +112,19 @@ export function useOCR() {
       setProgress(20);
       const scheduler = await initScheduler();
 
-      // Step 2: Preprocess image for better OCR
-      setProgress(30);
-      let processedImageUrl = imageDataUrl;
-      if (enablePreprocessing) {
-        console.log('Preprocessing image...');
-        processedImageUrl = await preprocessImage(imageDataUrl);
-        console.log('Image preprocessing complete');
-      }
+      // Step 2: Crop to ROI (bottom area with card info)
+      setProgress(35);
+      console.log('Cropping to ROI (card info area)...');
+      const roiImageUrl = await cropToROI(imageDataUrl);
+      console.log('ROI cropping complete');
 
-      // Step 3: OCR on FULL IMAGE (ROIs don't work well!)
+      // Step 3: OCR on ROI only
       setProgress(50);
-      console.log('Running OCR on full image with optimized settings...');
-      console.log('Image data URL length:', processedImageUrl.length);
+      console.log('Running OCR on ROI...');
+      console.log('Image data URL length:', roiImageUrl.length);
       
       // Add timeout and better error handling
-      const fullResult = await scheduler.addJob('recognize', processedImageUrl);
+      const fullResult = await scheduler.addJob('recognize', roiImageUrl);
       
       console.log('=== RAW TESSERACT OUTPUT ===');
       console.log('Full OCR text:', fullResult.data.text);
@@ -105,7 +141,7 @@ export function useOCR() {
       
       const rawText = fullResult.data.text;
       
-      // Step 3: Extract card number using regex (most reliable)
+      // Step 4: Extract card number using regex (most reliable)
       setProgress(60);
       // Pattern: 2-3 uppercase letters, optional space/dash/dot, 3 digits
       // Matches: OGN-170, OGN - 170, OGN•170, SFD-001
@@ -123,7 +159,7 @@ export function useOCR() {
         console.log('✗ No card number pattern found');
       }
       
-      // Step 4: Extract card name
+      // Step 5: Extract card name
       setProgress(80);
       let nameText = '';
       let nameConfidence = 0;
@@ -181,7 +217,7 @@ export function useOCR() {
         debug: {
           rawText,
           confidence: fullResult.data.confidence,
-          processedImage: processedImageUrl,
+          processedImage: roiImageUrl,
           potentialTitles: potentialTitles.map(t => t.text),
           numberMatch: numberText
         }
