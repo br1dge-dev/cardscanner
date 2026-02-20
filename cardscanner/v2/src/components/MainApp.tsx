@@ -6,7 +6,7 @@ import { Menu } from './Menu';
 import { Camera } from './Camera';
 import { CardResult } from './CardResult';
 import { useCards } from '../hooks/useCards';
-import { useOCR, type OCRDebugInfo } from '../hooks/useOCR';
+import { useNativeOCR, type OCRDebugInfo } from '../hooks/useNativeOCR';
 import { useCardMatching } from '../hooks/useCardMatching';
 import { dotGGClient } from '../api/dotgg';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -47,7 +47,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [ocrDebugInfo, setOcrDebugInfo] = useState<OCRDebugInfo | null>(null);
 
   const { cards, isLoading: cardsLoading, error: cardsError } = useCards();
-  const { processImage, isProcessing } = useOCR();
+  const { processImage, isProcessing } = useNativeOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
 
   // Save game selection
@@ -465,7 +465,7 @@ const handleCapture = useCallback(async (imageData: string) => {
                 <div className="debug-section">
                   <h4>Processed Image</h4>
                   <img 
-                    src={ocrDebugInfo.processedImage || capturedImage} 
+                    src={capturedImage || ''} 
                     alt="Processed"
                     className="debug-image"
                   />

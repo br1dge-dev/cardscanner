@@ -1,4 +1,4 @@
 export { useCards } from './useCards';
-export { useOCR } from './useOCR';
+export { useNativeOCR } from './useNativeOCR';
 export { useCardMatching } from './useCardMatching';
 export { useAuth } from './useAuth';
