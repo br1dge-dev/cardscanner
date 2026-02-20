@@ -1,143 +1,134 @@
-/**
- * Menu Styles - Slide-out hamburger menu
- */
-
+/* Menu Backdrop */
 .menu-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
   animation: fadeIn 0.2s ease;
 }
 
+/* Menu Panel */
 .menu-panel {
   position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
-  width: 280px;
-  max-width: 80vw;
-  background: linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%);
-  z-index: 1001;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  z-index: 1000;
   display: flex;
   flex-direction: column;
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
-  padding-top: 50px; /* Space for Dynamic Island */
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .menu-panel.open {
   transform: translateX(0);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Header */
+/* Menu Header */
 .menu-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 16px 16px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: var(--safe-top) 16px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .menu-close-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  padding: 8px;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.menu-close-btn:hover {
-  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
 }
 
 .menu-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
 }
 
 /* User Section */
 .menu-user-section {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   padding: 20px 16px;
 }
 
 .menu-user-avatar {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00ff9d 0%, #00d9a5 100%);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(201, 168, 76, 0.05));
+  border: 1px solid rgba(201, 168, 76, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1a1a2e;
+  color: var(--accent-gold);
+  flex-shrink: 0;
 }
 
 .menu-user-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-width: 0;
 }
 
 .menu-username {
   font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .menu-email {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Divider */
 .menu-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 8px 16px;
+  background: var(--border);
+  margin: 0 16px;
 }
 
-/* Navigation */
+/* Navigation Items */
 .menu-nav {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
   padding: 8px 0;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  transition: background 0.2s;
-  text-align: left;
+  gap: 14px;
   width: 100%;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.menu-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+.menu-item:active {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .menu-item-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -146,27 +137,27 @@
 }
 
 .game-icon {
-  background: rgba(0, 255, 157, 0.15);
-  color: #00ff9d;
+  background: rgba(201, 168, 76, 0.12);
+  color: var(--accent-gold);
 }
 
 .collection-icon {
-  background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent-blue);
 }
 
 .help-icon {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--accent-cyan);
 }
 
 .settings-icon {
-  background: rgba(139, 92, 246, 0.15);
-  color: #8b5cf6;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
 }
 
 .logout-icon {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
 
@@ -174,24 +165,26 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-width: 0;
 }
 
 .menu-item-label {
   font-size: 15px;
   font-weight: 500;
+  color: var(--text-primary);
 }
 
 .menu-item-value {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  color: var(--accent-gold);
+  margin-top: 2px;
 }
 
 .menu-item-arrow {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.menu-item-danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+.menu-item-danger .menu-item-label {
+  color: #ef4444;
 }
