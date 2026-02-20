@@ -27,6 +27,9 @@ export interface Card {
   trigger?: string;
   counter?: string;
   price?: number;       // Card price if available
+  hasFoil?: boolean;    // Whether foil version exists
+  hasNormal?: boolean;  // Whether normal version exists
+  foilPrice?: number;   // Foil price if available
 }
 
 export interface CardMatch {

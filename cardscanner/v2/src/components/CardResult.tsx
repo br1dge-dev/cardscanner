@@ -23,14 +23,10 @@ export const CardResult: React.FC<CardResultProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [showCapturedImage, setShowCapturedImage] = useState(false);
-  const [isFoil, setIsFoil] = useState(false);
-
-  // Check if card can be foil (Common or Uncommon)
-  const canBeFoil = () => {
-    if (!match?.card.rarity) return false;
-    const rarity = match.card.rarity.toLowerCase();
-    return rarity === 'common' || rarity === 'uncommon';
-  };
+  // Auto-set foil if card is foil-only (no normal version)
+  const isFoilOnly = match?.card.hasFoil === true && match?.card.hasNormal === false;
+  const canBeFoil = match?.card.hasFoil === true && match?.card.hasNormal === true;
+  const [isFoil, setIsFoil] = useState(isFoilOnly);
 
   if (!match) {
     return (
@@ -81,6 +77,9 @@ export const CardResult: React.FC<CardResultProps> = ({
   const getRarityClass = (rarity?: string) => {
     if (!rarity) return '';
     const r = rarity.toLowerCase();
+    if (r.includes('showcase')) return 'rarity-showcase';
+    if (r.includes('promo')) return 'rarity-promo';
+    if (r.includes('epic')) return 'rarity-epic';
     if (r.includes('leader')) return 'rarity-leader';
     if (r.includes('secret')) return 'rarity-secret';
     if (r.includes('rare')) return 'rarity-rare';
@@ -197,8 +196,15 @@ export const CardResult: React.FC<CardResultProps> = ({
             </button>
           )}
           
-          {/* Foil Toggle - only for Common/Uncommon */}
-          {canBeFoil() && (
+          {/* Foil indicator for foil-only cards */}
+          {isFoilOnly && (
+            <div className="foil-toggle" style={{ cursor: 'default' }}>
+              <span className="foil-toggle-text">✨ Foil Only</span>
+            </div>
+          )}
+          
+          {/* Foil Toggle - only when card has both versions */}
+          {canBeFoil && (
             <label className="foil-toggle">
               <input
                 type="checkbox"
