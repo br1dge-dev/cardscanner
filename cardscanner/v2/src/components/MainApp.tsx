@@ -34,6 +34,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   
   // Collection state
   const [collectionCount, setCollectionCount] = useState(0);
+  const [uniqueCount, setUniqueCount] = useState(0);
   
   // Scan state
   const [showCamera, setShowCamera] = useState(false);
@@ -64,9 +65,13 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     const result = await dotGGClient.getUserData(user);
     if (result.success && result.data) {
       const totalCards = result.data.collection.reduce((sum, item) => {
-        return sum + (parseInt(item.standard) || 0);
+        return sum + (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0);
       }, 0);
+      const uniqueCards = result.data.collection.filter(item => 
+        (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0) > 0
+      ).length;
       setCollectionCount(totalCards);
+      setUniqueCount(uniqueCards);
     }
   };
 
@@ -76,27 +81,6 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     // TODO: Reload card database for new game
   };
 
-  // Direct camera capture - opens native camera immediately
-const handleDirectCameraCapture = useCallback(async () => {
-  try {
-    const image = await CapacitorCamera.getPhoto({
-      quality: 95,
-      allowEditing: false,
-      resultType: CameraResultType.Base64,
-      source: CameraSource.Camera,
-      width: 2000
-    });
-
-    if (image.base64String) {
-      const imageData = `data:image/jpeg;base64,${image.base64String}`;
-      handleCapture(imageData);
-    }
-  } catch (err) {
-    // User cancelled or error
-    console.log('Camera cancelled or error:', err);
-  }
-}, []);
-
 const handleCapture = useCallback(async (imageData: string) => {
     setCapturedImage(imageData);
     setScanStatus('scanning');
@@ -105,7 +89,7 @@ const handleCapture = useCallback(async (imageData: string) => {
     try {
       const ocrData = await processImage(imageData);
       
-      // Save debug info if available
+      // Always save debug info
       if (ocrData.debug) {
         setOcrDebugInfo(ocrData.debug);
       }
@@ -122,10 +106,39 @@ const handleCapture = useCallback(async (imageData: string) => {
       setShowCamera(false);
     } catch (err) {
       console.error('Scan error:', err);
+      // Capture error details in debug info
+      setOcrDebugInfo(prev => prev ?? {
+        rawText: `[ERROR] ${err instanceof Error ? err.message : String(err)}`,
+        confidence: 0,
+        blocks: [],
+        potentialTitles: [],
+        numberMatch: null
+      });
       setScanStatus('error');
       setShowCamera(false);
     }
   }, [processImage, findMatches]);
+
+  // Direct camera capture - opens native camera immediately
+  const handleDirectCameraCapture = useCallback(async () => {
+    console.log('=== CAMERA CAPTURE: cards loaded:', cards.length, '===');
+    try {
+      const image = await CapacitorCamera.getPhoto({
+        quality: 95,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Camera,
+        width: 2000
+      });
+
+      if (image.base64String) {
+        const imageData = `data:image/jpeg;base64,${image.base64String}`;
+        handleCapture(imageData);
+      }
+    } catch (err) {
+      console.log('Camera cancelled or error:', err);
+    }
+  }, [handleCapture, cards.length]);
 
   const handleSaveCard = useCallback(async (cardId: string, quantity: number, isFoil: boolean = false) => {
     setIsSaving(true);
@@ -223,11 +236,11 @@ const handleCapture = useCallback(async (imageData: string) => {
         <div className="quick-stats">
           <div className="stat-item">
             <span className="stat-value">{collectionCount}</span>
-            <span className="stat-label">cards</span>
+            <span className="stat-label">total cards</span>
           </div>
           <div className="stat-item">
-            <span className="stat-value">{currentGame}</span>
-            <span className="stat-label">game</span>
+            <span className="stat-value">{uniqueCount}</span>
+            <span className="stat-label">unique</span>
           </div>
         </div>
 
@@ -238,74 +251,64 @@ const handleCapture = useCallback(async (imageData: string) => {
           </div>
         )}
         
-        {scanStatus === 'not_found' && (
+        {(scanStatus === 'not_found' || scanStatus === 'error') && (
           <div className="scan-status-overlay">
-            <div className="scan-status-content">
-              <div className="scan-status-icon">❓</div>
-              <h3>No card recognized</h3>
-              <p>Try again with better lighting and hold the card steady</p>
-              {debugMode && ocrDebugInfo && (
-                <button 
-                  className="btn-debug"
-                  onClick={() => {
-                    setScanStatus('idle'); // Close overlay to show debug modal
-                  }}
-                  style={{ marginBottom: '12px' }}
-                >
-                  🔍 View Debug Info
-                </button>
+            <div className="scan-status-content scan-status-detailed">
+              <div className="scan-status-icon">{scanStatus === 'error' ? '⚠️' : '❓'}</div>
+              <h3>{scanStatus === 'error' ? 'Scan failed' : 'No card recognized'}</h3>
+              
+              {/* Always show OCR diagnostics */}
+              {ocrDebugInfo && (
+                <div className="scan-diagnostics">
+                  <div className="diag-section">
+                    <span className="diag-label">OCR Text:</span>
+                    <pre className="diag-text">{ocrDebugInfo.rawText || '(nothing detected)'}</pre>
+                  </div>
+                  {ocrDebugInfo.numberMatch && (
+                    <div className="diag-section">
+                      <span className="diag-label">Number found:</span>
+                      <span className="diag-value">{ocrDebugInfo.numberMatch}</span>
+                    </div>
+                  )}
+                  <div className="diag-section">
+                    <span className="diag-label">Confidence:</span>
+                    <span className="diag-value">{(ocrDebugInfo.confidence * 100).toFixed(0)}%</span>
+                  </div>
+                  {ocrDebugInfo.potentialTitles.length > 0 && (
+                    <div className="diag-section">
+                      <span className="diag-label">Titles:</span>
+                      <span className="diag-value">{ocrDebugInfo.potentialTitles.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
               )}
+              
+              {!ocrDebugInfo && (
+                <p className="diag-none">No OCR data — plugin may not have responded</p>
+              )}
+
+              {/* Show captured image thumbnail */}
+              {capturedImage && (
+                <img src={capturedImage} alt="Scanned" className="scan-thumb" />
+              )}
+
               <div className="scan-status-actions">
                 <button 
                   className="btn-primary"
                   onClick={() => {
                     setScanStatus('idle');
-                    setShowCamera(true);
+                    handleDirectCameraCapture();
                   }}
                 >
                   🔄 Try Again
                 </button>
                 <button 
                   className="btn-secondary"
-                  onClick={() => setScanStatus('idle')}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {scanStatus === 'error' && (
-          <div className="scan-status-overlay">
-            <div className="scan-status-content">
-              <div className="scan-status-icon">⚠️</div>
-              <h3>Scan failed</h3>
-              <p>Something went wrong. Please try again.</p>
-              {debugMode && ocrDebugInfo && (
-                <button 
-                  className="btn-debug"
-                  onClick={() => {
-                    setScanStatus('idle'); // Close overlay to show debug modal
-                  }}
-                  style={{ marginBottom: '12px' }}
-                >
-                  🔍 View Debug Info
-                </button>
-              )}
-              <div className="scan-status-actions">
-                <button 
-                  className="btn-primary"
                   onClick={() => {
                     setScanStatus('idle');
-                    setShowCamera(true);
+                    setOcrDebugInfo(null);
+                    setCapturedImage(null);
                   }}
-                >
-                  🔄 Retry
-                </button>
-                <button 
-                  className="btn-secondary"
-                  onClick={() => setScanStatus('idle')}
                 >
                   Cancel
                 </button>
