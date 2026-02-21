@@ -1,95 +1,72 @@
 # Card Scanner – Projektstand & Roadmap
 
-**Datum:** 2026-02-20  
-**Status:** 🟢 Build-ready, wartet auf Device-Test  
+**Datum:** 2026-02-21  
+**Status:** 🟢 Funktioniert auf Device – OCR + Matching + Save getestet  
 **Repo:** https://github.com/br1dge-dev/cardscanner  
 **Basis:** `cardscanner/v2/`
 
 ---
 
-## ✅ Erledigt (20.02.2026)
+## ✅ Erledigt
 
-### Phase 1: Cleanup
-- [x] `card-scanner/` gelöscht (alter Zwischenstand)
-- [x] `projects/card-scanner/` gelöscht (Kimis gescheiterter ML Kit/CocoaPods Versuch)
-- [x] `cardscanner/v2/` als einzige Codebasis
+### Phase 1-3: Cleanup, Native OCR, UI Redesign (20.02.)
+- [x] Alte Codebasen gelöscht, `v2/` als einzige Codebasis
+- [x] NativeOCRPlugin.swift – Apple Vision `VNRecognizeTextRequest` (.accurate)
+- [x] TypeScript Plugin API + useNativeOCR Hook
+- [x] Dark Navy + Gold UI Redesign mit Mockups
 
-### Phase 2: Native OCR Plugin (iOS)
-- [x] `NativeOCRPlugin.swift` – Apple Vision `VNRecognizeTextRequest` (.accurate)
-- [x] `NativeOCRPlugin.m` – ObjC Bridge für Capacitor
-- [x] `src/plugins/native-ocr/definitions.ts` – TypeScript API
-- [x] `src/hooks/useNativeOCR.ts` – Drop-in Replacement für Tesseract-basiertes useOCR
-- [x] MainApp.tsx auf useNativeOCR umgestellt
-- [x] TypeScript ✅ Vite ✅ Xcode iOS Build ✅
+### Phase 4: Daten & Logik (20.02.)
+- [x] cards.json mit 744 echten Karten (IDs, Image-URLs, Preise)
+- [x] Smarte Foil-Logik aus API
 
-### Phase 3: UI Redesign
-- [x] Neues Farbschema: Dark Navy (#0a0e1a) + Gold (#c9a84c)
-- [x] Login-Screen mit Hero-Image & TCG-Branding
-- [x] Scanner-View mit Gold-Ecken-Frame (Idle-State)
-- [x] CardResult als Bottom-Sheet mit großem Kartenbild
-- [x] Rarity-Farben: Common/Uncommon/Rare/Epic/Showcase/Promo
-- [x] Menu mit farbigen Icons & Glassmorphism
-- [x] Mockups generiert (mockups/final-*.png)
-
-### Phase 4: Daten & Logik
-- [x] cards.json aktualisiert: 777 Karten mit vollen API-Daten
-- [x] Smarte Foil-Logik: `hasFoil`/`hasNormal` aus API statt Rarity-Guess
-- [x] Foil-Only Karten automatisch als Foil markiert
-- [x] Preise (normal + foil) aus API
+### Phase 5: Device-Test & Bugfixes (21.02.)
+- [x] **NativeOCRPlugin in Xcode-Projekt registriert** (war nicht im pbxproj!)
+- [x] **MyViewController.swift** für Plugin-Registrierung via `capacitorDidLoad()`
+- [x] **NativeOCRPlugin.m gelöscht** (Capacitor 8 braucht kein ObjC-Bridge)
+- [x] **Main.storyboard** auf MyViewController umgestellt
+- [x] **Stale Closure Bug gefixt** – `handleDirectCameraCapture` hatte `[]` Dependencies, `findMatches` lief gegen leeres cards-Array
+- [x] **cards.json ersetzt** – 777 leere Einträge → 744 echte Karten mit IDs
+- [x] **viewport-fit=cover** für iOS Safe Area
+- [x] **Header-Padding** für Notch/Dynamic Island
+- [x] **OCR-Diagnostics** bei Fehlschlag (Raw Text, Confidence, Thumbnail)
+- [x] **Collection-Count** zählt jetzt Foils mit + zeigt Unique-Count
+- [x] **Erster erfolgreicher Scan:** OGN-117 → Viktor - Innovator ✅
 
 ---
 
-## 🔴 Nächster Schritt: Device-Test (braucht Mac)
-
-```bash
-cd ~/.openclaw/workspace/cardscanner/v2
-npx cap open ios
-# → Xcode: Team setzen → iPhone auswählen → ▶ Run
-```
-
-**Was zu testen:**
-1. Login funktioniert?
-2. Kamera öffnet sich?
-3. OCR erkennt Kartennummer/-name?
-4. Card Matching findet die richtige Karte?
-5. Save to Collection funktioniert?
-
----
-
-## 🟡 Offene High-Impact Features (priorisiert)
+## 🟡 Nächste Schritte (priorisiert)
 
 ### #1: 🔴 Image-Matching als OCR-Fallback
-**Impact:** Sehr hoch – macht App robust bei schlechtem Licht, Foil-Reflexionen, schrägen Karten  
+**Impact:** Sehr hoch – macht App robust bei schlechtem Licht, Foil-Reflexionen  
 **Aufwand:** ~2-3h  
-**Ansatz:** Perceptual Hashing (pHash) der 777 Kartenbilder, Vergleich gegen Kamera-Foto  
-**Flow:** OCR versucht Kartennummer → Falls kein Match → Image-Hash-Vergleich → Bestätigung
+**Ansatz:** Perceptual Hashing (pHash) der 744 Kartenbilder → Vergleich gegen Kamera-Foto
 
 ### #2: 🟠 Collection View (echtes Grid)
-**Impact:** Hoch – aktuell nur Placeholder ("147 cards")  
+**Impact:** Hoch – aktuell nur Placeholder ("1016 cards total")  
 **Aufwand:** ~1h  
-**Ansatz:** API `getUserData` → Grid mit Kartenbildern, Foil-Marker, Filter-Chips (wie Mockup)
+**Ansatz:** API `getUserData` → Grid mit Kartenbildern, Foil-Marker, Filter
 
 ### #3: 🟡 Batch-Scan Modus
-**Impact:** Hoch für Power-User (100+ Karten scannen)  
+**Impact:** Hoch für Power-User  
 **Aufwand:** ~1h  
-**Ansatz:** Scan → Auto-Save → sofort nächste Kamera → kein Result-Modal dazwischen
+**Ansatz:** Scan → Auto-Save → sofort nächste Kamera → kein Result-Modal
 
 ### #4: 🟡 Custom Kamera-Overlay
-**Impact:** Mittel – schönere UX, aber native Kamera funktioniert  
-**Aufwand:** ~2h  
-**Status:** Aktuell nutzen wir `CapacitorCamera.getPhoto()` (native iOS Kamera, kein Overlay).  
-Gold-Ecken aus dem Mockup erscheinen nur im Idle-Screen vor dem Scan.  
-Für ein Live-Overlay bräuchten wir einen Custom Camera Stream.
+**Impact:** Mittel – schönere UX  
+**Aufwand:** ~2h (+ Rattenschwanz: Autofokus, Belichtung, Zoom)
 
-### #5: 🟢 Android Plugin
-**Impact:** Mittel (erweitert Zielgruppe)  
-**Aufwand:** ~2h  
-**Ansatz:** `NativeOCRPlugin.kt` mit Google ML Kit via Gradle (kein CocoaPods-Problem)
+### #5: 🟢 UI Polish
+**Impact:** Mittel – Mockups sahen schicker aus als die echte App  
+**Aufwand:** ~1h  
+**Details:** Spacing, Fonts, Animationen an Mockup-Qualität anpassen
 
 ### #6: 🟢 Tesseract.js entfernen
 **Impact:** Niedrig (Cleanup)  
 **Aufwand:** 5min  
-**Wann:** Nach erfolgreichem Device-Test der nativen OCR
+
+### #7: 🟢 Android Plugin
+**Aufwand:** ~2h  
+**Ansatz:** NativeOCRPlugin.kt mit Google ML Kit
 
 ---
 
@@ -97,11 +74,10 @@ Für ein Live-Overlay bräuchten wir einen Custom Camera Stream.
 
 | Entscheidung | Begründung |
 |-------------|-----------|
-| Apple Vision statt ML Kit (iOS) | Capacitor 8 SPM + CocoaPods = inkompatibel. Vision ist built-in, keine Dependencies. |
-| ML Kit für Android (geplant) | Via Gradle, kein CocoaPods-Konflikt auf Android |
-| Native Kamera statt Custom Stream | Einfacher, zuverlässiger. Custom Overlay = separates Feature. |
-| cards.json lokal statt API-Live | Schnelleres Matching, Offline-fähig. Refresh bei App-Start möglich. |
-| hasFoil/hasNormal aus API | Deutlich genauer als Rarity-basierter Guess |
+| Apple Vision statt ML Kit (iOS) | Capacitor 8 SPM + CocoaPods = inkompatibel. Vision ist built-in. |
+| MyViewController statt AppDelegate | Saubere Plugin-Registrierung via `capacitorDidLoad()` |
+| Kein ObjC-Bridge (.m) | Capacitor 8 nutzt `CAPBridgedPlugin` Protocol, `.m` ist veraltet |
+| cards.json lokal | Schnelleres Matching, Offline-fähig |
 
 ---
 
@@ -110,11 +86,9 @@ Für ein Live-Overlay bräuchten wir einen Custom Camera Stream.
 | Komponente | Technologie |
 |------------|-------------|
 | Frontend | React 19 + TypeScript + Vite |
-| Mobile | Capacitor 8 |
+| Mobile | Capacitor 8 (SPM) |
 | OCR (iOS) | Apple Vision Framework (VNRecognizeTextRequest) |
-| OCR (Android) | Google ML Kit (geplant) |
-| API | DotGG REST API (Auth, Collection, Cards) |
-| Auth | Email/Password → DotGGUser + Token |
+| API | DotGG REST API |
 | Styling | Custom CSS, Dark Gold Theme |
 
 ---
@@ -125,28 +99,33 @@ Für ein Live-Overlay bräuchten wir einen Custom Camera Stream.
 cardscanner/v2/
 ├── src/
 │   ├── components/
-│   │   ├── Auth.tsx/.css        # Login Screen
+│   │   ├── Auth.tsx/.css
 │   │   ├── MainApp.tsx/.css     # Scanner + Main View
-│   │   ├── CardResult.tsx/.css  # Result Modal
-│   │   ├── Camera.tsx/.css      # Camera Component
-│   │   └── Menu.tsx/.css        # Slide-out Menu
+│   │   ├── CardResult.tsx/.css  # Result Bottom-Sheet
+│   │   ├── Camera.tsx/.css
+│   │   └── Menu.tsx/.css
 │   ├── hooks/
-│   │   ├── useNativeOCR.ts      # Apple Vision OCR ← NEU
-│   │   ├── useOCR.ts            # Tesseract (deprecated, noch nicht entfernt)
-│   │   ├── useCardMatching.ts   # Fuzzy Matching
+│   │   ├── useNativeOCR.ts      # Apple Vision OCR
+│   │   ├── useOCR.ts            # Tesseract (deprecated)
+│   │   ├── useCardMatching.ts   # Fuzzy + Exact Matching
 │   │   ├── useCards.ts          # Card Database
-│   │   ├── useAuth.ts           # DotGG Auth
-│   │   └── index.ts
-│   ├── plugins/
-│   │   └── native-ocr/
-│   │       └── definitions.ts   # Plugin TypeScript API
-│   ├── api/dotgg.ts             # DotGG API Client
+│   │   └── useAuth.ts
+│   ├── plugins/native-ocr/definitions.ts
+│   ├── api/dotgg.ts
 │   └── types.ts
 ├── ios/App/App/
-│   ├── NativeOCRPlugin.swift    # Apple Vision Plugin ← NEU
-│   └── NativeOCRPlugin.m        # ObjC Bridge ← NEU
-├── public/cards.json            # 777 Karten (voll, mit Rarity/Foil/Preise)
-├── mockups/                     # UI Mockups (PNG)
-├── PLAN.md                      # ← Diese Datei
-└── package.json
+│   ├── NativeOCRPlugin.swift    # Apple Vision Plugin
+│   ├── MyViewController.swift   # Plugin-Registrierung
+│   └── AppDelegate.swift
+├── public/cards.json            # 744 Karten (mit IDs, Images, Preise)
+├── data/cards.json              # Quelldaten
+└── PLAN.md
 ```
+
+## Learnings (21.02.)
+
+1. **Xcode-Projekt prüfen!** Dateien im Dateisystem ≠ im Build. Immer pbxproj verifizieren.
+2. **Capacitor 8 Plugin-Registrierung:** `CAPBridgedPlugin` + `MyViewController.capacitorDidLoad()` – kein ObjC nötig.
+3. **React useCallback Closures:** Leere Dependency-Arrays = Zeitbombe. Immer alle genutzten Werte listen.
+4. **DerivedData cleanen** bei SPM-XCFramework-Problemen.
+5. **`viewport-fit=cover`** ist Pflicht für iOS Safe Area.
