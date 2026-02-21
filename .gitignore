@@ -1,0 +1,44 @@
+# ==========================================
+# OpenClaw workspace files (private!)
+# ==========================================
+/AGENTS.md
+/SOUL.md
+/USER.md
+/IDENTITY.md
+/MEMORY.md
+/TOOLS.md
+/HEARTBEAT.md
+/BOOTSTRAP.md
+/TODO.md
+/.openclaw/
+/memory/
+
+# ==========================================
+# Secrets
+# ==========================================
+**/.env
+
+# ==========================================
+# Databases (keep local only)
+# ==========================================
+/cardmarket.db
+/backups/
+
+# ==========================================
+# Root-level junk from old experiments
+# ==========================================
+/node_modules/
+/app.js
+/index.html
+/test-*.js
+/package.json
+/package-lock.json
+/eng.traineddata
+/projects/
+/arcane_floor_trend.png
+/spiritforged_sales.png
+
+# ==========================================
+# OS junk
+# ==========================================
+.DS_Store
