@@ -118,11 +118,12 @@ export const CardResult: React.FC<CardResultProps> = ({
           ) : (
             <>
               <div className="card-image-container">
-                {card.imageUrl ? (
+                {(card.imageUrl || card.image) ? (
                   <img 
-                    src={card.imageUrl} 
+                    src={card.imageUrl || card.image} 
                     alt={card.name}
                     className="card-image"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 ) : (
                   <div className="card-image-placeholder">

@@ -1,5 +1,5 @@
 /**
- * MainApp Component - Main application with menu navigation
+ * MainApp Component - Main application with home screen navigation
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { Menu } from './Menu';
@@ -8,6 +8,7 @@ import { CardResult } from './CardResult';
 import { useCards } from '../hooks/useCards';
 import { useNativeOCR, type OCRDebugInfo } from '../hooks/useNativeOCR';
 import { useCardMatching } from '../hooks/useCardMatching';
+import { useScanHistory } from '../hooks/useScanHistory';
 import { dotGGClient } from '../api/dotgg';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import type { User, CardMatch, Game } from '../types';
@@ -18,84 +19,79 @@ interface MainAppProps {
   onLogout: () => void;
 }
 
-type ViewMode = 'camera' | 'collection' | 'help' | 'settings';
+type ViewMode = 'home' | 'scanner' | 'collection' | 'history' | 'help' | 'settings';
+
+const SUPPORTED_GAMES: { id: Game; name: string; enabled: boolean }[] = [
+  { id: 'riftbound', name: 'Riftbound', enabled: true },
+  { id: 'lorcana', name: 'Lorcana', enabled: false },
+  { id: 'magic', name: 'Magic: The Gathering', enabled: false },
+  { id: 'pokemon', name: 'Pokémon TCG', enabled: false },
+];
 
 export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
-  // View state
-  const [viewMode, setViewMode] = useState<ViewMode>('camera');
+  const [viewMode, setViewMode] = useState<ViewMode>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGameSelectorOpen, setIsGameSelectorOpen] = useState(false);
-  
-  // Game state
+
   const [currentGame, setCurrentGame] = useState<Game>(() => {
     const saved = localStorage.getItem('cardscanner_game') as Game;
     return saved || 'riftbound';
   });
-  
+
   // Collection state
   const [collectionCount, setCollectionCount] = useState(0);
   const [uniqueCount, setUniqueCount] = useState(0);
-  
+
   // Scan state
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<CardMatch | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found' | 'saved' | 'error'>('idle');
-  
-  // Debug state
+
+  // Debug
   const [debugMode, setDebugMode] = useState(false);
   const [ocrDebugInfo, setOcrDebugInfo] = useState<OCRDebugInfo | null>(null);
 
   const { cards, isLoading: cardsLoading, error: cardsError } = useCards();
   const { processImage, isProcessing } = useNativeOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
+  const { history, addEntry } = useScanHistory();
 
-  // Save game selection
   useEffect(() => {
     localStorage.setItem('cardscanner_game', currentGame);
   }, [currentGame]);
 
-  // Load collection on mount
-  useEffect(() => {
-    loadCollection();
-  }, [user]);
+  useEffect(() => { loadCollection(); }, [user]);
 
   const loadCollection = async () => {
     const result = await dotGGClient.getUserData(user);
     if (result.success && result.data) {
-      const totalCards = result.data.collection.reduce((sum, item) => {
-        return sum + (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0);
-      }, 0);
-      const uniqueCards = result.data.collection.filter(item => 
-        (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0) > 0
-      ).length;
+      const totalCards = result.data.collection.reduce((sum, item) =>
+        sum + (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0), 0);
+      const uniqueCards = result.data.collection.filter(item =>
+        (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0) > 0).length;
       setCollectionCount(totalCards);
       setUniqueCount(uniqueCards);
     }
   };
 
   const handleGameSelect = (game: Game) => {
+    const g = SUPPORTED_GAMES.find(g => g.id === game);
+    if (!g?.enabled) return;
     setCurrentGame(game);
     setIsGameSelectorOpen(false);
-    // TODO: Reload card database for new game
   };
 
-const handleCapture = useCallback(async (imageData: string) => {
+  // ---- Scan Logic ----
+  const handleCapture = useCallback(async (imageData: string) => {
     setCapturedImage(imageData);
     setScanStatus('scanning');
     setOcrDebugInfo(null);
-    
     try {
       const ocrData = await processImage(imageData);
-      
-      // Always save debug info
-      if (ocrData.debug) {
-        setOcrDebugInfo(ocrData.debug);
-      }
-      
+      if (ocrData.debug) setOcrDebugInfo(ocrData.debug);
       const result = await findMatches(ocrData);
-      
       if (result.bestMatch) {
         setScanResult(result.bestMatch);
         setScanStatus('found');
@@ -106,47 +102,45 @@ const handleCapture = useCallback(async (imageData: string) => {
       setShowCamera(false);
     } catch (err) {
       console.error('Scan error:', err);
-      // Capture error details in debug info
       setOcrDebugInfo(prev => prev ?? {
         rawText: `[ERROR] ${err instanceof Error ? err.message : String(err)}`,
-        confidence: 0,
-        blocks: [],
-        potentialTitles: [],
-        numberMatch: null
+        confidence: 0, blocks: [], potentialTitles: [], numberMatch: null
       });
       setScanStatus('error');
       setShowCamera(false);
     }
   }, [processImage, findMatches]);
 
-  // Direct camera capture - opens native camera immediately
   const handleDirectCameraCapture = useCallback(async () => {
-    console.log('=== CAMERA CAPTURE: cards loaded:', cards.length, '===');
     try {
       const image = await CapacitorCamera.getPhoto({
-        quality: 95,
-        allowEditing: false,
+        quality: 95, allowEditing: false,
         resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
-        width: 2000
+        source: CameraSource.Camera, width: 2000
       });
-
       if (image.base64String) {
-        const imageData = `data:image/jpeg;base64,${image.base64String}`;
-        handleCapture(imageData);
+        handleCapture(`data:image/jpeg;base64,${image.base64String}`);
       }
     } catch (err) {
-      console.log('Camera cancelled or error:', err);
+      console.log('Camera cancelled:', err);
     }
   }, [handleCapture, cards.length]);
 
   const handleSaveCard = useCallback(async (cardId: string, quantity: number, isFoil: boolean = false) => {
     setIsSaving(true);
-
     try {
       const result = await dotGGClient.addCardToCollection(user, cardId, quantity, isFoil);
-      
       if (result.success) {
+        // Log to history
+        if (scanResult) {
+          addEntry({
+            cardId: scanResult.card.id,
+            cardName: scanResult.card.name,
+            cardNumber: scanResult.card.number,
+            cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
+            action: 'added', isFoil, quantity
+          });
+        }
         setScanStatus('saved');
         await loadCollection();
         setTimeout(() => {
@@ -157,189 +151,356 @@ const handleCapture = useCallback(async (imageData: string) => {
       } else {
         setScanStatus('error');
       }
-    } catch (err) {
-      setScanStatus('error');
-    } finally {
-      setIsSaving(false);
-    }
-  }, [user]);
+    } catch { setScanStatus('error'); }
+    finally { setIsSaving(false); }
+  }, [user, scanResult, addEntry]);
 
   const handleCloseResult = useCallback(() => {
+    // Log skip to history
+    if (scanResult) {
+      addEntry({
+        cardId: scanResult.card.id,
+        cardName: scanResult.card.name,
+        cardNumber: scanResult.card.number,
+        cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
+        action: 'skipped', isFoil: false, quantity: 0
+      });
+    }
     setScanResult(null);
     setCapturedImage(null);
     setScanStatus('idle');
-  }, []);
+  }, [scanResult, addEntry]);
 
-  // Render different views
-  const renderContent = () => {
-    if (viewMode === 'collection') {
-      return (
-        <div className="placeholder-view">
-          <h2>My Collection</h2>
-          <p>{collectionCount} cards total</p>
-          <button onClick={() => setViewMode('camera')}>Back to Scanner</button>
+  // ---- Time formatting ----
+  const timeAgo = (ts: number) => {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  // ---- Render Views ----
+
+  const renderHome = () => (
+    <div className="home-view">
+      {/* Greeting */}
+      <div className="home-greeting">
+        <h2 className="greeting-text">Welcome back,</h2>
+        <h1 className="greeting-name">{user.username}</h1>
+      </div>
+
+      {/* Collection Card */}
+      <div className="home-stats-card">
+        <div className="stats-row">
+          <div className="stat-block">
+            <span className="stat-number">{collectionCount}</span>
+            <span className="stat-desc">Total Cards</span>
+          </div>
+          <div className="stat-divider" />
+          <div className="stat-block">
+            <span className="stat-number">{uniqueCount}</span>
+            <span className="stat-desc">Unique</span>
+          </div>
+          <div className="stat-divider" />
+          <div className="stat-block">
+            <span className="stat-number">{cards.length}</span>
+            <span className="stat-desc">In Database</span>
+          </div>
         </div>
-      );
-    }
+      </div>
 
-    if (viewMode === 'help') {
-      return (
-        <div className="placeholder-view">
-          <h2>How to Scan</h2>
-          <ul>
-            <li>📷 Hold card steady in good light</li>
-            <li>🎯 Center the card in the frame</li>
-            <li>✨ Avoid glare and shadows</li>
-            <li>🔍 Make sure text is readable</li>
-          </ul>
-          <button onClick={() => setViewMode('camera')}>Back to Scanner</button>
+      {/* Action Tiles */}
+      <div className="home-actions">
+        <button className="action-tile action-scan" onClick={handleDirectCameraCapture}>
+          <span className="action-icon">📷</span>
+          <span className="action-label">Scan Card</span>
+          <span className="action-hint">Open camera</span>
+        </button>
+        <button className="action-tile action-library" onClick={() => setViewMode('collection')}>
+          <span className="action-icon">📚</span>
+          <span className="action-label">Library</span>
+          <span className="action-hint">{uniqueCount} unique</span>
+        </button>
+        <button className="action-tile action-setup" onClick={() => setViewMode('settings')}>
+          <span className="action-icon">⚙️</span>
+          <span className="action-label">Setup</span>
+          <span className="action-hint">Game & account</span>
+        </button>
+      </div>
+
+      {/* Recent Scans */}
+      {history.length > 0 && (
+        <div className="home-history">
+          <div className="section-header">
+            <h3>Recent Scans</h3>
+            <button className="link-btn" onClick={() => setViewMode('history')}>
+              View All
+            </button>
+          </div>
+          <div className="history-list">
+            {history.slice(0, 5).map((entry, i) => (
+              <div key={i} className="history-item">
+                <div className="history-thumb">
+                  {entry.cardImage ? (
+                    <img src={entry.cardImage} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : null}
+                  <span className="history-thumb-fallback">{entry.cardName[0]}</span>
+                </div>
+                <div className="history-info">
+                  <span className="history-name">{entry.cardName}</span>
+                  <span className="history-number">{entry.cardNumber}</span>
+                </div>
+                <div className="history-meta">
+                  <span className={`history-badge ${entry.action}`}>
+                    {entry.action === 'added' ? `✅ +${entry.quantity}${entry.isFoil ? ' ✨' : ''}` : '⏭'}
+                  </span>
+                  <span className="history-time">{timeAgo(entry.timestamp)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      );
-    }
+      )}
 
-    // Camera view (default)
-    return (
-      <>
-        {/* Camera Preview */}
-        {showCamera ? (
-          <Camera 
-            onCapture={handleCapture}
-            onClose={() => setShowCamera(false)}
-            isProcessing={isProcessing || isMatching}
-          />
+      {/* Empty state if no history */}
+      {history.length === 0 && (
+        <div className="home-empty-history">
+          <p className="empty-hint">No scans yet — tap <strong>Scan Card</strong> to start!</p>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderScanner = () => (
+    <>
+      {showCamera ? (
+        <Camera
+          onCapture={handleCapture}
+          onClose={() => setShowCamera(false)}
+          isProcessing={isProcessing || isMatching}
+        />
+      ) : (
+        <div className="scanner-view">
+          <div className="scanner-guide" onClick={handleDirectCameraCapture}>
+            {/* Illustrated card frame */}
+            <div className="scanner-card-illustration">
+              <div className="illust-card">
+                <div className="illust-card-art">
+                  <span className="illust-icon">⚔️</span>
+                </div>
+                <div className="illust-card-name">Card Name</div>
+                <div className="illust-card-text">
+                  <div className="illust-line"></div>
+                  <div className="illust-line short"></div>
+                </div>
+                <div className="illust-card-number">
+                  <span className="illust-highlight">OGN-001</span>
+                </div>
+              </div>
+              {/* Scan target corners */}
+              <div className="scan-corners">
+                <span className="corner top-left"></span>
+                <span className="corner top-right"></span>
+                <span className="corner bottom-left"></span>
+                <span className="corner bottom-right"></span>
+              </div>
+              {/* Pulse ring */}
+              <div className="scan-pulse"></div>
+            </div>
+
+            <div className="scanner-instructions">
+              <h3>Tap to Scan</h3>
+              <p>Hold your Riftbound card steady in good light.</p>
+              <p className="scanner-tip">💡 Make sure the <strong>card number</strong> at the bottom is visible</p>
+            </div>
+          </div>
+
+          {/* Scanning overlay */}
+          {scanStatus === 'scanning' && (
+            <div className="scanning-overlay">
+              <div className="scanning-content">
+                <div className="scanning-spinner" />
+                <p>Analyzing card...</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Scan failure overlay */}
+      {(scanStatus === 'not_found' || scanStatus === 'error') && (
+        <div className="scan-status-overlay">
+          <div className="scan-status-content scan-status-detailed">
+            <div className="scan-status-icon">{scanStatus === 'error' ? '⚠️' : '❓'}</div>
+            <h3>{scanStatus === 'error' ? 'Scan failed' : 'No card recognized'}</h3>
+            {ocrDebugInfo && (
+              <div className="scan-diagnostics">
+                <div className="diag-section">
+                  <span className="diag-label">OCR Text:</span>
+                  <pre className="diag-text">{ocrDebugInfo.rawText || '(nothing detected)'}</pre>
+                </div>
+                {ocrDebugInfo.numberMatch && (
+                  <div className="diag-section">
+                    <span className="diag-label">Number found:</span>
+                    <span className="diag-value">{ocrDebugInfo.numberMatch}</span>
+                  </div>
+                )}
+                <div className="diag-section">
+                  <span className="diag-label">Confidence:</span>
+                  <span className="diag-value">{(ocrDebugInfo.confidence * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            )}
+            {capturedImage && <img src={capturedImage} alt="Scanned" className="scan-thumb" />}
+            <div className="scan-status-actions">
+              <button className="btn-primary" onClick={() => { setScanStatus('idle'); handleDirectCameraCapture(); }}>
+                🔄 Try Again
+              </button>
+              <button className="btn-secondary" onClick={() => { setScanStatus('idle'); setOcrDebugInfo(null); setCapturedImage(null); }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const renderCollection = () => (
+    <div className="view-page">
+      <div className="view-page-header">
+        <button className="back-btn" onClick={() => setViewMode('home')}>← Back</button>
+        <h2>My Collection</h2>
+      </div>
+      <div className="view-page-body">
+        <div className="collection-stats-row">
+          <div className="collection-stat">
+            <span className="cs-value">{collectionCount}</span>
+            <span className="cs-label">Total</span>
+          </div>
+          <div className="collection-stat">
+            <span className="cs-value">{uniqueCount}</span>
+            <span className="cs-label">Unique</span>
+          </div>
+          <div className="collection-stat">
+            <span className="cs-value">{cards.length}</span>
+            <span className="cs-label">Known</span>
+          </div>
+        </div>
+        <p className="placeholder-text">Collection grid coming soon...</p>
+      </div>
+    </div>
+  );
+
+  const renderHistory = () => (
+    <div className="view-page">
+      <div className="view-page-header">
+        <button className="back-btn" onClick={() => setViewMode('home')}>← Back</button>
+        <h2>Scan History</h2>
+      </div>
+      <div className="view-page-body">
+        {history.length === 0 ? (
+          <p className="placeholder-text">No scans yet.</p>
         ) : (
-          <div className="camera-placeholder-container" onClick={handleDirectCameraCapture}>
-            <div className="camera-preview-box">
-              {/* Card Scanning Guide Overlay */}
-              <div className="scan-guide">
-                <div className="scan-guide-frame">
-                  <div className="scan-guide-corners">
-                    <span className="corner top-left"></span>
-                    <span className="corner top-right"></span>
-                    <span className="corner bottom-left"></span>
-                    <span className="corner bottom-right"></span>
-                  </div>
-                  {/* ROI Highlight - unterer Bereich für Nummer/Name */}
-                  <div className="scan-guide-roi">
-                    <span className="roi-label">📄 Card Number & Name</span>
-                    <div className="roi-zone"></div>
-                  </div>
+          <div className="history-list full">
+            {history.map((entry, i) => (
+              <div key={i} className="history-item">
+                <div className="history-thumb">
+                  {entry.cardImage ? (
+                    <img src={entry.cardImage} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : null}
+                  <span className="history-thumb-fallback">{entry.cardName[0]}</span>
+                </div>
+                <div className="history-info">
+                  <span className="history-name">{entry.cardName}</span>
+                  <span className="history-number">{entry.cardNumber}</span>
+                </div>
+                <div className="history-meta">
+                  <span className={`history-badge ${entry.action}`}>
+                    {entry.action === 'added' ? `✅ +${entry.quantity}${entry.isFoil ? ' ✨' : ''}` : '⏭ Skipped'}
+                  </span>
+                  <span className="history-time">{timeAgo(entry.timestamp)}</span>
                 </div>
               </div>
-              <p className="camera-tap-text">Tap to scan</p>
-              <p className="camera-hint">Hold card here — number at bottom</p>
-            </div>
+            ))}
           </div>
         )}
+      </div>
+    </div>
+  );
 
-        {/* Quick Stats */}
-        <div className="quick-stats">
-          <div className="stat-item">
-            <span className="stat-value">{collectionCount}</span>
-            <span className="stat-label">total cards</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-value">{uniqueCount}</span>
-            <span className="stat-label">unique</span>
+  const renderSettings = () => (
+    <div className="view-page">
+      <div className="view-page-header">
+        <button className="back-btn" onClick={() => setViewMode('home')}>← Back</button>
+        <h2>Setup</h2>
+      </div>
+      <div className="view-page-body">
+        <div className="settings-section">
+          <h3 className="settings-title">Account</h3>
+          <div className="settings-card">
+            <div className="settings-row">
+              <span className="settings-label">Username</span>
+              <span className="settings-value">{user.username}</span>
+            </div>
+            <div className="settings-row">
+              <span className="settings-label">Email</span>
+              <span className="settings-value">{user.email}</span>
+            </div>
           </div>
         </div>
-
-        {/* Scan Status Feedback */}
-        {scanStatus === 'saved' && (
-          <div className="recent-scan-toast success">
-            ✅ Card added to collection!
+        <div className="settings-section">
+          <h3 className="settings-title">Game</h3>
+          <div className="settings-card">
+            <button className="settings-row clickable" onClick={() => setIsGameSelectorOpen(true)}>
+              <span className="settings-label">Current Game</span>
+              <span className="settings-value">{currentGame.charAt(0).toUpperCase() + currentGame.slice(1)} →</span>
+            </button>
           </div>
-        )}
-        
-        {(scanStatus === 'not_found' || scanStatus === 'error') && (
-          <div className="scan-status-overlay">
-            <div className="scan-status-content scan-status-detailed">
-              <div className="scan-status-icon">{scanStatus === 'error' ? '⚠️' : '❓'}</div>
-              <h3>{scanStatus === 'error' ? 'Scan failed' : 'No card recognized'}</h3>
-              
-              {/* Always show OCR diagnostics */}
-              {ocrDebugInfo && (
-                <div className="scan-diagnostics">
-                  <div className="diag-section">
-                    <span className="diag-label">OCR Text:</span>
-                    <pre className="diag-text">{ocrDebugInfo.rawText || '(nothing detected)'}</pre>
-                  </div>
-                  {ocrDebugInfo.numberMatch && (
-                    <div className="diag-section">
-                      <span className="diag-label">Number found:</span>
-                      <span className="diag-value">{ocrDebugInfo.numberMatch}</span>
-                    </div>
-                  )}
-                  <div className="diag-section">
-                    <span className="diag-label">Confidence:</span>
-                    <span className="diag-value">{(ocrDebugInfo.confidence * 100).toFixed(0)}%</span>
-                  </div>
-                  {ocrDebugInfo.potentialTitles.length > 0 && (
-                    <div className="diag-section">
-                      <span className="diag-label">Titles:</span>
-                      <span className="diag-value">{ocrDebugInfo.potentialTitles.join(', ')}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {!ocrDebugInfo && (
-                <p className="diag-none">No OCR data — plugin may not have responded</p>
-              )}
-
-              {/* Show captured image thumbnail */}
-              {capturedImage && (
-                <img src={capturedImage} alt="Scanned" className="scan-thumb" />
-              )}
-
-              <div className="scan-status-actions">
-                <button 
-                  className="btn-primary"
-                  onClick={() => {
-                    setScanStatus('idle');
-                    handleDirectCameraCapture();
-                  }}
-                >
-                  🔄 Try Again
-                </button>
-                <button 
-                  className="btn-secondary"
-                  onClick={() => {
-                    setScanStatus('idle');
-                    setOcrDebugInfo(null);
-                    setCapturedImage(null);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+        </div>
+        <div className="settings-section">
+          <h3 className="settings-title">Debug</h3>
+          <div className="settings-card">
+            <button className="settings-row clickable" onClick={() => setDebugMode(!debugMode)}>
+              <span className="settings-label">Debug Mode</span>
+              <span className="settings-value">{debugMode ? '🐛 ON' : 'OFF'}</span>
+            </button>
           </div>
-        )}
-      </>
-    );
+        </div>
+        <button className="btn-logout" onClick={onLogout}>Sign Out</button>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (viewMode) {
+      case 'home': return renderHome();
+      case 'scanner': return renderScanner();
+      case 'collection': return renderCollection();
+      case 'history': return renderHistory();
+      case 'settings': return renderSettings();
+      case 'help': return renderScanner(); // redirect to scanner
+      default: return renderHome();
+    }
   };
 
   return (
     <div className="main-app">
-      {/* Header with Menu Button */}
+      {/* Header */}
       <header className="app-header">
-        <button 
-          className="menu-toggle-btn"
-          onClick={() => setIsMenuOpen(true)}
-          aria-label="Open menu"
-        >
+        <button className="menu-toggle-btn" onClick={() => setIsMenuOpen(true)} aria-label="Open menu">
           <span className="hamburger-icon">☰</span>
         </button>
-        <h1 className="app-title">Card Scanner</h1>
-        <button 
-          className="debug-toggle-btn"
-          onClick={() => setDebugMode(!debugMode)}
-          aria-label="Toggle debug mode"
-          title={debugMode ? "Debug mode ON" : "Debug mode OFF"}
-        >
-          <span className={debugMode ? "debug-active" : "debug-inactive"}>🐛</span>
-        </button>
+        <h1 className="app-title">Riftbound Scanner</h1>
+        {viewMode !== 'home' && (
+          <button className="header-home-btn" onClick={() => setViewMode('home')} aria-label="Home">
+            <span>🏠</span>
+          </button>
+        )}
+        {viewMode === 'home' && <div style={{ width: 40 }} />}
       </header>
 
       {/* Main Content */}
@@ -359,43 +520,38 @@ const handleCapture = useCallback(async (imageData: string) => {
         )}
       </main>
 
+      {/* Toast */}
+      {scanStatus === 'saved' && (
+        <div className="recent-scan-toast success">✅ Card added to collection!</div>
+      )}
+
       {/* Slide-out Menu */}
       <Menu
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         user={user}
         currentGame={currentGame}
-        onSelectGame={() => {
-          setIsMenuOpen(false);
-          setIsGameSelectorOpen(true);
-        }}
-        onViewCollection={() => {
-          setIsMenuOpen(false);
-          setViewMode('collection');
-        }}
-        onViewHelp={() => {
-          setIsMenuOpen(false);
-          setViewMode('help');
-        }}
-        onViewSettings={() => {
-          setIsMenuOpen(false);
-          setViewMode('settings');
-        }}
+        onSelectGame={() => { setIsMenuOpen(false); setIsGameSelectorOpen(true); }}
+        onViewCollection={() => { setIsMenuOpen(false); setViewMode('collection'); }}
+        onViewHelp={() => { setIsMenuOpen(false); setViewMode('scanner'); }}
+        onViewSettings={() => { setIsMenuOpen(false); setViewMode('settings'); }}
         onLogout={onLogout}
       />
 
-      {/* Game Selector Modal */}
+      {/* Game Selector */}
       {isGameSelectorOpen && (
         <div className="game-selector-modal" onClick={() => setIsGameSelectorOpen(false)}>
           <div className="game-selector-content" onClick={e => e.stopPropagation()}>
             <h3>Select Game</h3>
-            {['riftbound', 'lorcana', 'magic', 'pokemon'].map(game => (
+            {SUPPORTED_GAMES.map(game => (
               <button
-                key={game}
-                className={`game-option ${currentGame === game ? 'active' : ''}`}
-                onClick={() => handleGameSelect(game as Game)}
+                key={game.id}
+                className={`game-option ${currentGame === game.id ? 'active' : ''} ${!game.enabled ? 'disabled' : ''}`}
+                onClick={() => handleGameSelect(game.id)}
+                disabled={!game.enabled}
               >
-                {game.charAt(0).toUpperCase() + game.slice(1)}
+                <span className="game-option-name">{game.name}</span>
+                {!game.enabled && <span className="coming-soon-badge">Coming Soon</span>}
               </button>
             ))}
             <button onClick={() => setIsGameSelectorOpen(false)}>Cancel</button>
@@ -413,91 +569,37 @@ const handleCapture = useCallback(async (imageData: string) => {
           isSaving={isSaving}
         />
       )}
-      
-      {/* Debug View Modal */}
+
+      {/* Debug View */}
       {debugMode && ocrDebugInfo && (
         <div className="debug-modal" onClick={() => setOcrDebugInfo(null)}>
           <div className="debug-content" onClick={e => e.stopPropagation()}>
             <div className="debug-header">
               <h3>🔍 OCR Debug Info</h3>
-              <button 
-                className="debug-close"
-                onClick={() => setOcrDebugInfo(null)}
-              >
-                ✕
-              </button>
+              <button className="debug-close" onClick={() => setOcrDebugInfo(null)}>✕</button>
             </div>
-            
             <div className="debug-body">
               <div className="debug-section">
                 <h4>Raw OCR Text</h4>
                 <pre className="debug-text">{ocrDebugInfo.rawText || '(no text)'}</pre>
               </div>
-              
               <div className="debug-grid">
                 <div className="debug-section">
                   <h4>Detected Number</h4>
                   <p className="debug-value">{ocrDebugInfo.numberMatch || 'None'}</p>
                 </div>
-                
                 <div className="debug-section">
                   <h4>OCR Confidence</h4>
                   <p className="debug-value">{ocrDebugInfo.confidence?.toFixed(1) || 'N/A'}%</p>
                 </div>
               </div>
-              
-              <div className="debug-section">
-                <h4>Potential Titles ({ocrDebugInfo.potentialTitles?.length || 0})</h4>
-                <ul className="debug-list">
-                  {ocrDebugInfo.potentialTitles?.map((title, i) => (
-                    <li key={i}>{title}</li>
-                  )) || <li>No titles found</li>}
-                </ul>
-              </div>
-              
               {scanResult && (
                 <div className="debug-section debug-match">
                   <h4>✓ Matched Card</h4>
                   <p><strong>{scanResult.card.name}</strong></p>
                   <p>{scanResult.card.number} ({scanResult.matchedBy})</p>
-                  <p>Match confidence: {(scanResult.confidence * 100).toFixed(0)}%</p>
                 </div>
               )}
-              
-              {capturedImage && (
-                <div className="debug-section">
-                  <h4>Processed Image</h4>
-                  <img 
-                    src={capturedImage || ''} 
-                    alt="Processed"
-                    className="debug-image"
-                  />
-                </div>
-              )}
-              
-              <div className="debug-actions">
-                <button 
-                  className="btn-secondary"
-                  onClick={() => {
-                    setOcrDebugInfo(null);
-                    setShowCamera(true);
-                  }}
-                >
-                  📷 New Scan
-                </button>
-                <button 
-                  className="btn-secondary"
-                  onClick={() => {
-                    // Retry with same image
-                    if (capturedImage) {
-                      setOcrDebugInfo(null);
-                      handleCapture(capturedImage);
-                    }
-                  }}
-                >
-                  🔄 Re-scan Same
-                </button>
-              </div>
             </div>
           </div>
         </div>
