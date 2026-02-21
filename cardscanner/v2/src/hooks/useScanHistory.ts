@@ -8,7 +8,7 @@ export interface ScanHistoryEntry {
   cardName: string;
   cardNumber: string;
   cardImage: string;
-  action: 'added' | 'skipped';
+  action: 'added' | 'skipped' | 'removed';
   timestamp: number;
   isFoil: boolean;
   quantity: number;

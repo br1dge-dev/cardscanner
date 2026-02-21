@@ -50,18 +50,20 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found' | 'saved' | 'error'>('idle');
 
-  // Debug
+  // Debug & preferences
   const [debugMode, setDebugMode] = useState(false);
   const [ocrDebugInfo, setOcrDebugInfo] = useState<OCRDebugInfo | null>(null);
+  const [marketplace, setMarketplace] = useState<'cardmarket' | 'tcgplayer'>(() => {
+    return (localStorage.getItem('cardscanner_marketplace') as 'cardmarket' | 'tcgplayer') || 'cardmarket';
+  });
 
   const { cards, isLoading: cardsLoading, error: cardsError } = useCards();
   const { processImage, isProcessing } = useNativeOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
   const { history, addEntry } = useScanHistory();
 
-  useEffect(() => {
-    localStorage.setItem('cardscanner_game', currentGame);
-  }, [currentGame]);
+  useEffect(() => { localStorage.setItem('cardscanner_game', currentGame); }, [currentGame]);
+  useEffect(() => { localStorage.setItem('cardscanner_marketplace', marketplace); }, [marketplace]);
 
   useEffect(() => { loadCollection(); }, [user]);
 
@@ -130,17 +132,20 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
   const handleSaveCard = useCallback(async (cardId: string, quantity: number, isFoil: boolean = false) => {
     setIsSaving(true);
+    const isRemoval = quantity < 0;
+    const apiQuantity = isRemoval ? 0 : quantity; // API: 0 removes, positive adds
     try {
-      const result = await dotGGClient.addCardToCollection(user, cardId, quantity, isFoil);
+      const result = await dotGGClient.addCardToCollection(user, cardId, apiQuantity, isFoil);
       if (result.success) {
-        // Log to history
         if (scanResult) {
           addEntry({
             cardId: scanResult.card.id,
             cardName: scanResult.card.name,
             cardNumber: scanResult.card.number,
             cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
-            action: 'added', isFoil, quantity
+            action: isRemoval ? 'removed' : 'added',
+            isFoil,
+            quantity: Math.abs(quantity)
           });
         }
         setScanStatus('saved');
@@ -264,7 +269,20 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           </div>
           <div className="history-list">
             {history.slice(0, 5).map((entry, i) => (
-              <div key={i} className="history-item">
+              <div
+                key={i}
+                className={`history-item ${entry.action === 'skipped' ? 'resumable' : ''}`}
+                onClick={() => {
+                  if (entry.action === 'skipped') {
+                    // Resume: find card and re-open result
+                    const card = cards.find(c => c.id === entry.cardId);
+                    if (card) {
+                      setScanResult({ card, confidence: 1, matchedBy: 'number' });
+                      setScanStatus('found');
+                    }
+                  }
+                }}
+              >
                 <div className="history-thumb">
                   {entry.cardImage ? (
                     <img src={entry.cardImage} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -277,7 +295,9 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
                 </div>
                 <div className="history-meta">
                   <span className={`history-badge ${entry.action}`}>
-                    {entry.action === 'added' ? `✅ +${entry.quantity}${entry.isFoil ? ' ✨' : ''}` : '⏭'}
+                    {entry.action === 'added' ? `✅ +${entry.quantity}${entry.isFoil ? ' ✨' : ''}`
+                      : entry.action === 'removed' ? `🔻 −${entry.quantity}`
+                      : '⏭ Tap to resume'}
                   </span>
                   <span className="history-time">{timeAgo(entry.timestamp)}</span>
                 </div>
@@ -484,6 +504,15 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           </div>
         </div>
         <div className="settings-section">
+          <h3 className="settings-title">Marketplace</h3>
+          <div className="settings-card">
+            <button className="settings-row clickable" onClick={() => setMarketplace(marketplace === 'cardmarket' ? 'tcgplayer' : 'cardmarket')}>
+              <span className="settings-label">Price Source</span>
+              <span className="settings-value">{marketplace === 'cardmarket' ? 'Cardmarket' : 'TCGPlayer'}</span>
+            </button>
+          </div>
+        </div>
+        <div className="settings-section">
           <h3 className="settings-title">Tools</h3>
           <div className="settings-card">
             <button className="settings-row clickable" onClick={() => setDebugMode(!debugMode)}>
@@ -593,6 +622,8 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           onSave={handleSaveCard}
           onClose={handleCloseResult}
           isSaving={isSaving}
+          debugMode={debugMode}
+          marketplace={marketplace}
         />
       )}
 
