@@ -14,7 +14,7 @@
   "delivery": {
     "mode": "announce",
     "channel": "telegram",
-    "to": "282407579"
+    "to": "REDACTED"
   },
   "enabled": true
 }
