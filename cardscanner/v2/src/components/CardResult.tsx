@@ -175,11 +175,39 @@ export const CardResult: React.FC<CardResultProps> = ({
                   </div>
                 )}
 
-                {card.attributes && card.attributes.length > 0 && (
+                {card.tags && card.tags.length > 0 && (
                   <div className="card-attributes">
-                    {card.attributes.map((attr, idx) => (
-                      <span key={idx} className="attribute-tag">{attr}</span>
+                    {card.tags.map((tag, idx) => (
+                      <span key={idx} className="attribute-tag">{tag}</span>
                     ))}
+                  </div>
+                )}
+
+                {/* Price Info */}
+                {(card.cmPrice || card.price) && (
+                  <div className="card-prices">
+                    {card.cmPrice != null && Number(card.cmPrice) > 0 && (
+                      <div className="price-row">
+                        <span className="price-source">Cardmarket</span>
+                        <span className="price-value">{Number(card.cmPrice).toFixed(2)}€</span>
+                        {card.cmDelta7dPrice != null && Number(card.cmDelta7dPrice) !== 0 && (
+                          <span className={`price-delta ${Number(card.cmDelta7dPrice) > 0 ? 'up' : 'down'}`}>
+                            {Number(card.cmDelta7dPrice) > 0 ? '↑' : '↓'}{Math.abs(Number(card.cmDelta7dPrice)).toFixed(2)}€
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {card.price != null && Number(card.price) > 0 && (
+                      <div className="price-row">
+                        <span className="price-source">DotGG</span>
+                        <span className="price-value">{Number(card.price).toFixed(2)}€</span>
+                      </div>
+                    )}
+                    {card.cmurl && (
+                      <a href={card.cmurl} target="_blank" rel="noopener noreferrer" className="cm-link">
+                        View on Cardmarket →
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

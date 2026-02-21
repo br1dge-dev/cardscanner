@@ -41,6 +41,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   // Collection state
   const [collectionCount, setCollectionCount] = useState(0);
   const [uniqueCount, setUniqueCount] = useState(0);
+  const [nickname, setNickname] = useState(user.username);
 
   // Scan state
   const [showCamera, setShowCamera] = useState(false);
@@ -67,6 +68,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const loadCollection = async () => {
     const result = await dotGGClient.getUserData(user);
     if (result.success && result.data) {
+      if (result.data.user?.nickname) setNickname(result.data.user.nickname);
       const totalCards = result.data.collection.reduce((sum, item) =>
         sum + (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0), 0);
       const uniqueCards = result.data.collection.filter(item =>
@@ -189,11 +191,15 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       {/* Greeting */}
       <div className="home-greeting">
         <h2 className="greeting-text">Welcome back,</h2>
-        <h1 className="greeting-name">{user.username}</h1>
+        <h1 className="greeting-name">{nickname}</h1>
       </div>
 
-      {/* Collection Card */}
+      {/* Collection Card – Riftbound branded */}
       <div className="home-stats-card">
+        <div className="stats-card-header">
+          <span className="stats-game-badge">⚔️ Riftbound</span>
+          <span className="stats-game-set">Origins · Spiritforged</span>
+        </div>
         <div className="stats-row">
           <div className="stat-block">
             <span className="stat-number">{collectionCount}</span>
@@ -207,7 +213,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           <div className="stat-divider" />
           <div className="stat-block">
             <span className="stat-number">{cards.length}</span>
-            <span className="stat-desc">In Database</span>
+            <span className="stat-desc">Database</span>
           </div>
         </div>
       </div>
@@ -215,17 +221,33 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       {/* Action Tiles */}
       <div className="home-actions">
         <button className="action-tile action-scan" onClick={handleDirectCameraCapture}>
-          <span className="action-icon">📷</span>
-          <span className="action-label">Scan Card</span>
+          <div className="action-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <span className="action-label">Scan</span>
           <span className="action-hint">Open camera</span>
         </button>
         <button className="action-tile action-library" onClick={() => setViewMode('collection')}>
-          <span className="action-icon">📚</span>
+          <div className="action-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="18" rx="2"/>
+              <path d="M2 8h20"/>
+              <path d="M9 3v5"/>
+            </svg>
+          </div>
           <span className="action-label">Library</span>
           <span className="action-hint">{uniqueCount} unique</span>
         </button>
         <button className="action-tile action-setup" onClick={() => setViewMode('settings')}>
-          <span className="action-icon">⚙️</span>
+          <div className="action-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+          </div>
           <span className="action-label">Setup</span>
           <span className="action-hint">Game & account</span>
         </button>
@@ -399,30 +421,30 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     <div className="view-page">
       <div className="view-page-header">
         <button className="back-btn" onClick={() => setViewMode('home')}>← Back</button>
-        <h2>Scan History</h2>
+        <h2>Activity Log</h2>
       </div>
       <div className="view-page-body">
         {history.length === 0 ? (
-          <p className="placeholder-text">No scans yet.</p>
+          <p className="placeholder-text">No activity yet.</p>
         ) : (
-          <div className="history-list full">
+          <div className="activity-log">
             {history.map((entry, i) => (
-              <div key={i} className="history-item">
-                <div className="history-thumb">
-                  {entry.cardImage ? (
-                    <img src={entry.cardImage} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  ) : null}
-                  <span className="history-thumb-fallback">{entry.cardName[0]}</span>
+              <div key={i} className="activity-entry">
+                <div className="activity-dot-line">
+                  <div className={`activity-dot ${entry.action}`} />
+                  {i < history.length - 1 && <div className="activity-line" />}
                 </div>
-                <div className="history-info">
-                  <span className="history-name">{entry.cardName}</span>
-                  <span className="history-number">{entry.cardNumber}</span>
-                </div>
-                <div className="history-meta">
-                  <span className={`history-badge ${entry.action}`}>
-                    {entry.action === 'added' ? `✅ +${entry.quantity}${entry.isFoil ? ' ✨' : ''}` : '⏭ Skipped'}
-                  </span>
-                  <span className="history-time">{timeAgo(entry.timestamp)}</span>
+                <div className="activity-content">
+                  <p className="activity-text">
+                    {entry.action === 'added'
+                      ? <>Added <strong>{entry.cardName}</strong>{entry.isFoil ? ' (Foil)' : ''} ×{entry.quantity} to Riftbound Collection</>
+                      : <>Scanned <strong>{entry.cardName}</strong> — skipped</>
+                    }
+                  </p>
+                  <div className="activity-detail">
+                    <span className="activity-number">{entry.cardNumber}</span>
+                    <span className="activity-time">{timeAgo(entry.timestamp)}</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -444,7 +466,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           <div className="settings-card">
             <div className="settings-row">
               <span className="settings-label">Username</span>
-              <span className="settings-value">{user.username}</span>
+              <span className="settings-value">{nickname}</span>
             </div>
             <div className="settings-row">
               <span className="settings-label">Email</span>
@@ -462,11 +484,15 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           </div>
         </div>
         <div className="settings-section">
-          <h3 className="settings-title">Debug</h3>
+          <h3 className="settings-title">Tools</h3>
           <div className="settings-card">
             <button className="settings-row clickable" onClick={() => setDebugMode(!debugMode)}>
               <span className="settings-label">Debug Mode</span>
               <span className="settings-value">{debugMode ? '🐛 ON' : 'OFF'}</span>
+            </button>
+            <button className="settings-row clickable" onClick={() => setViewMode('history')}>
+              <span className="settings-label">Activity Log</span>
+              <span className="settings-value">{history.length} entries →</span>
             </button>
           </div>
         </div>
