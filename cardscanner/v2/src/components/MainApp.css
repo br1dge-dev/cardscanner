@@ -284,7 +284,10 @@
   font-weight: 600;
 }
 .history-badge.added { color: #22c55e; }
-.history-badge.skipped { color: var(--text-muted); }
+.history-badge.removed { color: #ef4444; }
+.history-badge.skipped { color: var(--accent-gold); }
+.history-item.resumable { cursor: pointer; border-color: rgba(201, 168, 76, 0.2); }
+.history-item.resumable:active { background: var(--bg-surface); }
 .history-time {
   font-size: 11px;
   color: var(--text-muted);
