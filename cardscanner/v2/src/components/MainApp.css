@@ -75,6 +75,12 @@
 
 .home-greeting {
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.greeting-content {
+  flex: 1;
 }
 .greeting-text {
   font-size: 16px;
@@ -89,6 +95,38 @@
   background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Poro mascot */
+.poro-container {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  animation: poroPeek 6s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+.poro {
+  width: 100%;
+  height: 100%;
+}
+/* Subtle idle bounce */
+@keyframes poroPeek {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+  15% { transform: translateY(-4px) rotate(2deg); opacity: 1; }
+  30% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  50% { transform: translateY(-2px) rotate(-1deg); opacity: 1; }
+  65% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+}
+/* Blink animation on the eyes */
+.poro-eye-l, .poro-eye-r {
+  animation: poroBlink 4s ease-in-out infinite;
+}
+.poro-eye-r {
+  animation-delay: 0.1s;
+}
+@keyframes poroBlink {
+  0%, 42%, 46%, 100% { transform: scaleY(1); }
+  44% { transform: scaleY(0.1); }
 }
 
 /* Stats Card – Riftbound compact module */
