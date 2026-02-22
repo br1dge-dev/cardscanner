@@ -52,6 +52,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found' | 'saved' | 'error'>('idle');
   const [successToast, setSuccessToast] = useState<{ cardName: string; isFoil: boolean } | null>(null);
+  const [savingOverlay, setSavingOverlay] = useState(false); // "Adding to collection..." overlay
   const [showResult, setShowResult] = useState(false); // delays CardResult reveal for smooth transition
 
   // Debug & preferences
@@ -66,21 +67,35 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const { findMatches, isMatching } = useCardMatching(cards);
   const { history, addEntry } = useScanHistory();
 
-  // Gyroscope / device motion for parallax
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const tiltRef = useRef({ x: 0, y: 0 });
+  // Gyroscope parallax — uses refs + direct DOM manipulation to avoid 60fps re-renders
+  const tiltTarget = useRef({ x: 0, y: 0 });
+  const tiltCurrent = useRef({ x: 0, y: 0 });
+  const tiltElements = useRef<Map<string, { el: HTMLElement; intensity: number }>>(new Map());
+
+  const tiltRef = useCallback((key: string, intensity: number) => (el: HTMLElement | null) => {
+    if (el) {
+      tiltElements.current.set(key, { el, intensity });
+    } else {
+      tiltElements.current.delete(key);
+    }
+  }, []);
 
   useEffect(() => {
     const handleOrientation = (e: DeviceOrientationEvent) => {
-      const x = Math.max(-15, Math.min(15, (e.gamma || 0) * 0.3));
-      const y = Math.max(-15, Math.min(15, ((e.beta || 0) - 45) * 0.3));
-      tiltRef.current = { x, y };
+      tiltTarget.current = {
+        x: Math.max(-15, Math.min(15, (e.gamma || 0) * 0.3)),
+        y: Math.max(-15, Math.min(15, ((e.beta || 0) - 45) * 0.3))
+      };
     };
     const animate = () => {
-      setTilt(prev => ({
-        x: prev.x + (tiltRef.current.x - prev.x) * 0.08,
-        y: prev.y + (tiltRef.current.y - prev.y) * 0.08
-      }));
+      const c = tiltCurrent.current;
+      const t = tiltTarget.current;
+      c.x += (t.x - c.x) * 0.08;
+      c.y += (t.y - c.y) * 0.08;
+      // Direct DOM updates — no React re-render
+      tiltElements.current.forEach(({ el, intensity }) => {
+        el.style.transform = `translate(${c.x * intensity}px, ${c.y * intensity}px)`;
+      });
       rafId = requestAnimationFrame(animate);
     };
     let rafId = requestAnimationFrame(animate);
@@ -91,12 +106,19 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     };
   }, []);
 
-  const tiltStyle = (intensity: number = 1) => ({
-    transform: `translate(${tilt.x * intensity}px, ${tilt.y * intensity}px)`,
-  });
-
   useEffect(() => { localStorage.setItem('cardscanner_game', currentGame); }, [currentGame]);
   useEffect(() => { localStorage.setItem('cardscanner_marketplace', marketplace); }, [marketplace]);
+
+  // Auto-dismiss success toast after 4.5s
+  useEffect(() => {
+    if (!successToast) return;
+    const timer = setTimeout(() => {
+      setSuccessToast(null);
+      setScanStatus('idle');
+      setShowResult(false);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [successToast]);
 
   const loadCollection = useCallback(async () => {
     const result = await dotGGClient.getUserData(user);
@@ -159,8 +181,8 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         // Brief hold on processing overlay, then reveal card result smoothly
         setShowResult(false);
         setScanStatus('found');
-        // Give the processing overlay time to breathe before revealing card
-        setTimeout(() => setShowResult(true), 600);
+        // Give the "Card identified" overlay time to breathe before revealing card
+        setTimeout(() => setShowResult(true), 720);
       } else {
         setScanResult(null);
         setScanStatus('not_found');
@@ -213,6 +235,9 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
   const handleSaveCard = useCallback(async (cardId: string, deltaQuantity: number, isFoil: boolean = false) => {
     setIsSaving(true);
+    // Immediately show saving overlay and hide card result
+    setSavingOverlay(true);
+    setShowResult(false);
     
     // CRITICAL: API expects ABSOLUTE values, not deltas!
     const existingItem = userData?.collection.find(c => c.card === cardId);
@@ -221,37 +246,40 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     const currentCount = isFoil ? currentFoil : currentStd;
     const newCount = Math.max(0, currentCount + deltaQuantity);
     
+    // Capture card info before async ops (scanResult might change)
+    const savedCard = scanResult ? {
+      id: scanResult.card.id,
+      name: scanResult.card.name,
+      number: scanResult.card.number,
+      image: scanResult.card.imageUrl || scanResult.card.image || ''
+    } : null;
+    
     try {
       const result = await dotGGClient.addCardToCollection(user, cardId, newCount, isFoil);
       if (result.success) {
-        if (scanResult) {
+        if (savedCard) {
           addEntry({
-            cardId: scanResult.card.id,
-            cardName: scanResult.card.name,
-            cardNumber: scanResult.card.number,
-            cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
+            cardId: savedCard.id, cardName: savedCard.name,
+            cardNumber: savedCard.number, cardImage: savedCard.image,
             action: newCount === 0 ? 'removed' : (deltaQuantity < 0 ? 'removed' : 'added'),
-            isFoil,
-            quantity: Math.abs(deltaQuantity)
+            isFoil, quantity: Math.abs(deltaQuantity)
           });
         }
+        // Transition: saving → success (clean, no intermediate states)
+        setSavingOverlay(false);
+        setScanResult(null);
+        setCapturedImage(null);
+        setShowResult(false);
         setScanStatus('saved');
-        // Show success toast with card info
-        if (scanResult) {
-          setSuccessToast({ cardName: scanResult.card.name, isFoil });
-          setTimeout(() => setSuccessToast(null), 3000);
-        }
-        await loadCollection();
-        setTimeout(() => {
-          setScanResult(null);
-          setCapturedImage(null);
-          setScanStatus('idle');
-          setShowResult(false);
-        }, 2500);
+        setSuccessToast(savedCard ? { cardName: savedCard.name, isFoil } : null);
+        // Reload collection in background (don't block UI)
+        loadCollection().catch(() => {});
       } else {
+        setSavingOverlay(false);
         setScanStatus('error');
       }
     } catch {
+      setSavingOverlay(false);
       setScanStatus('error');
     } finally {
       setIsSaving(false);
@@ -338,7 +366,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       </div>
 
       {/* Collection Module – Riftbound */}
-      <div className="home-stats-card glow-border anim-fade-in-delay-1" style={tiltStyle(0.5)} onClick={() => setViewMode('collection')}>
+      <div className="home-stats-card glow-border anim-fade-in-delay-1" ref={tiltRef('stats', 0.5)} onClick={() => setViewMode('collection')}>
         <div className="stats-card-header">
           {/* Riftbound collection icon — shield with cards */}
           <div className="collection-icon">
@@ -729,7 +757,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         <button className="menu-toggle-btn" onClick={() => setIsMenuOpen(true)} aria-label="Open menu">
           <span className="hamburger-icon">☰</span>
         </button>
-        <div className="app-title-group" style={tiltStyle(0.3)}>
+        <div className="app-title-group" ref={tiltRef('header', 0.3)}>
           <svg className="app-logo-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <circle cx="12" cy="12" r="4"/>
@@ -768,8 +796,16 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         )}
       </main>
 
-      {/* Processing overlay — only when we have a captured image being processed */}
-      {scanStatus === 'scanning' && capturedImage && (
+      {/* Status overlays — single layer, priority: saving > processing > found transition */}
+      {savingOverlay && (
+        <div className="process-overlay">
+          <div className="process-overlay-content">
+            <div className="process-spinner" />
+            <span className="process-text">Adding to collection…</span>
+          </div>
+        </div>
+      )}
+      {!savingOverlay && scanStatus === 'scanning' && capturedImage && (
         <div className="process-overlay">
           <div className="process-overlay-content">
             <div className="process-spinner" />
@@ -777,27 +813,32 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           </div>
         </div>
       )}
-
-      {/* Hold processing overlay briefly while card result loads */}
-      {scanStatus === 'found' && !showResult && (
+      {!savingOverlay && scanStatus === 'found' && !showResult && (
         <div className="process-overlay">
           <div className="process-overlay-content">
-            <div className="process-spinner" />
-            <span className="process-text">Match found</span>
+            <svg className="process-check" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            <span className="process-text">Card identified</span>
           </div>
         </div>
       )}
 
-      {/* Success overlay — after saving to collection */}
+      {/* Success overlay — tap to dismiss */}
       {successToast && (
-        <div className="success-overlay">
+        <div className="success-overlay" onClick={() => {
+          setSuccessToast(null);
+          setScanStatus('idle');
+          setShowResult(false);
+        }}>
           <div className="success-overlay-content">
-            <svg className="success-check" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="success-check" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
               <polyline points="22 4 12 14.01 9 11.01"/>
             </svg>
             <span className="success-card-name">{successToast.cardName}</span>
             <span className="success-label">added to collection{successToast.isFoil ? ' (foil)' : ''}</span>
+            <span className="success-dismiss">tap to dismiss</span>
           </div>
         </div>
       )}
