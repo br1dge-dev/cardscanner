@@ -65,7 +65,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const { cards, isLoading: cardsLoading, error: cardsError } = useCards();
   const { processImage, isProcessing } = useNativeOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
-  const { history, addEntry } = useScanHistory();
+  const { history, addEntry, totalScans } = useScanHistory();
 
   // Gyroscope parallax — uses refs + direct DOM manipulation to avoid 60fps re-renders
   const tiltTarget = useRef({ x: 0, y: 0 });
@@ -325,7 +325,6 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         </div>
         {/* Scan Score — highscore flex */}
         {(() => {
-          const totalScans = history.filter(e => e.action === 'added').reduce((sum, e) => sum + e.quantity, 0);
           const rank = totalScans >= 1000 ? { label: 'Rift Walker', cls: 'rank-mythic' }
             : totalScans >= 500 ? { label: 'Archmage', cls: 'rank-legendary' }
             : totalScans >= 200 ? { label: 'Lorekeeper', cls: 'rank-epic' }

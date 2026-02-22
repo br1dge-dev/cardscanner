@@ -15,6 +15,7 @@ export interface ScanHistoryEntry {
 }
 
 const STORAGE_KEY = 'cardscanner_history';
+const COUNTER_KEY = 'cardscanner_total_scans';
 const MAX_ENTRIES = 50;
 const MAX_RETRY_IMAGES = 5; // limit stored base64 images to avoid localStorage overflow
 
@@ -53,6 +54,9 @@ function saveHistory(entries: ScanHistoryEntry[]) {
 
 export function useScanHistory() {
   const [history, setHistory] = useState<ScanHistoryEntry[]>(loadHistory);
+  const [totalScans, setTotalScans] = useState<number>(() => {
+    return parseInt(localStorage.getItem(COUNTER_KEY) || '0') || 0;
+  });
 
   const addEntry = useCallback((entry: Omit<ScanHistoryEntry, 'timestamp'>) => {
     setHistory(prev => {
@@ -60,6 +64,14 @@ export function useScanHistory() {
       saveHistory(updated);
       return updated;
     });
+    // Increment persistent counter for successful adds
+    if (entry.action === 'added') {
+      setTotalScans(prev => {
+        const next = prev + entry.quantity;
+        localStorage.setItem(COUNTER_KEY, String(next));
+        return next;
+      });
+    }
   }, []);
 
   const clearHistory = useCallback(() => {
@@ -67,5 +79,5 @@ export function useScanHistory() {
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  return { history, addEntry, clearHistory };
+  return { history, addEntry, clearHistory, totalScans };
 }
