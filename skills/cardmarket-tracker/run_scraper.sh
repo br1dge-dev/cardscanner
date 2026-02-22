@@ -8,6 +8,13 @@ export USER="robert"
 # Add user site-packages to Python path
 export PYTHONPATH="/Users/robert/Library/Python/3.9/lib/python/site-packages:$PYTHONPATH"
 
-# Run the scraper
+# Log file for debugging
+LOGFILE="/Users/robert/.openclaw/workspace/skills/cardmarket-tracker/cron.log"
+
+# Run the scraper with logging
 cd /Users/robert/.openclaw/workspace/skills/cardmarket-tracker
-/usr/bin/python3 scraper.py "$@"
+echo "=== $(date): Starting scraper for $1 ===" >> "$LOGFILE"
+/usr/bin/python3 scraper.py "$@" >> "$LOGFILE" 2>&1
+EXIT_CODE=$?
+echo "=== $(date): Exited with code $EXIT_CODE ===" >> "$LOGFILE"
+exit $EXIT_CODE
