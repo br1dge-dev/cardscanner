@@ -174,3 +174,27 @@ Required Location: Germany
 
 🏁 FERTIG: 49 Listings, Floor: 189.00€
 === Sun Feb 22 19:43:53 CET 2026: Exited with code 0 ===
+=== Sun Feb 22 20:43:39 CET 2026: Starting scraper for arcane ===
+🦋 Arcane Box Set Scraper - 2026-02-22 20:43
+URL: https://www.cardmarket.com/en/Riftbound/Products/Box-Sets/Arcane-Box-Set?sellerCountry=7&language=1
+Required Location: Germany
+
+🌐 Lade Seite...
+📊 Status: 200
+📦 Initiale Listings: 48
+
+🔍 Suche nach Load-More Button...
+
+📜 Scrolle für mehr Content...
+
+📊 GESAMT: 48 Listings geladen
+✅ Erfolgreich geparst: 48 Listings
+   🇩🇪 Germany: 48
+   🌍 Other: 0
+
+💶 Floor-Price (nur DE): 189.00€
+🚨 Verkaufsverdacht: PepWork @ 189.00€
+✅ Gespeichert: Scrape #160 (48 DE Listings)
+
+🏁 FERTIG: 48 Listings, Floor: 189.00€
+=== Sun Feb 22 20:43:50 CET 2026: Exited with code 0 ===

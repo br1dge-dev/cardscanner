@@ -52,6 +52,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found' | 'saved' | 'error'>('idle');
   const [successToast, setSuccessToast] = useState<{ cardName: string; isFoil: boolean } | null>(null);
+  const [showResult, setShowResult] = useState(false); // delays CardResult reveal for smooth transition
 
   // Debug & preferences
   const [debugMode, setDebugMode] = useState(false);
@@ -155,16 +156,13 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       const result = await findMatches(ocrData);
       if (result.bestMatch) {
         setScanResult(result.bestMatch);
+        // Brief hold on processing overlay, then reveal card result smoothly
+        setShowResult(false);
         setScanStatus('found');
+        setTimeout(() => setShowResult(true), 100);
       } else {
         setScanResult(null);
         setScanStatus('not_found');
-        // Log failed scans so they appear in history
-        const ocrHint = ocrData.number || ocrData.name || 'Unknown';
-        addEntry({
-          cardId: '', cardName: `Scan: ${ocrHint}`, cardNumber: ocrData.number || '—',
-          cardImage: '', action: 'skipped', isFoil: false, quantity: 0
-        });
       }
       setShowCamera(false);
     } catch (err) {
@@ -175,17 +173,11 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       });
       setScanStatus('error');
       setShowCamera(false);
-      // Log error scans too
-      addEntry({
-        cardId: '', cardName: 'Scan error', cardNumber: '—',
-        cardImage: '', action: 'skipped', isFoil: false, quantity: 0
-      });
     }
   }, [processImage, findMatches, addEntry]);
 
   const handleDirectCameraCapture = useCallback(async () => {
     try {
-      setScanStatus('scanning');
       const image = await CapacitorCamera.getPhoto({
         quality: 95, allowEditing: false,
         resultType: CameraResultType.Base64,
@@ -196,6 +188,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       } else {
         console.warn('Camera returned empty base64');
         setScanStatus('idle');
+        setShowResult(false);
       }
     } catch (err) {
       console.log('Camera cancelled:', err);
@@ -238,6 +231,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           setScanResult(null);
           setCapturedImage(null);
           setScanStatus('idle');
+          setShowResult(false);
         }, 1800);
       } else {
         setScanStatus('error');
@@ -262,6 +256,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     setScanResult(null);
     setCapturedImage(null);
     setScanStatus('idle');
+    setShowResult(false);
   }, [scanResult, addEntry]);
 
   // ---- Time formatting ----
@@ -700,12 +695,22 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         )}
       </main>
 
-      {/* Processing overlay — visible during OCR/matching */}
-      {scanStatus === 'scanning' && (
+      {/* Processing overlay — only when we have a captured image being processed */}
+      {scanStatus === 'scanning' && capturedImage && (
         <div className="process-overlay">
           <div className="process-overlay-content">
             <div className="process-spinner" />
             <span className="process-text">Processing image…</span>
+          </div>
+        </div>
+      )}
+
+      {/* Hold processing overlay briefly while card result loads */}
+      {scanStatus === 'found' && !showResult && (
+        <div className="process-overlay">
+          <div className="process-overlay-content">
+            <div className="process-spinner" />
+            <span className="process-text">Match found</span>
           </div>
         </div>
       )}
@@ -759,8 +764,8 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         </div>
       )}
 
-      {/* Card Result Modal */}
-      {scanResult !== null && (
+      {/* Card Result Modal — gated on showResult for smooth transition */}
+      {scanResult !== null && showResult && (
         <CardResult
           match={scanResult}
           capturedImage={capturedImage}
