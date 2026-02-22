@@ -323,44 +323,21 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           <h2 className="greeting-text">Greetings,</h2>
           <h1 className="greeting-name">{nickname}</h1>
         </div>
-        {/* Poro mascot — peeks in from the right */}
+        {/* Poro — minimal line sketch, just the vibe */}
         <div className="poro-container">
-          <svg className="poro" width="48" height="48" viewBox="0 0 64 64" fill="none">
-            {/* Body */}
-            <ellipse cx="32" cy="38" rx="18" ry="16" fill="#e8dfd0" />
-            {/* Belly tuft */}
-            <ellipse cx="32" cy="42" rx="10" ry="8" fill="#f5f0e8" />
-            {/* Left ear */}
-            <ellipse cx="20" cy="22" rx="5" ry="8" fill="#e8dfd0" transform="rotate(-15 20 22)" />
-            <ellipse cx="20" cy="22" rx="3" ry="5" fill="#d4a8a8" transform="rotate(-15 20 22)" />
-            {/* Right ear */}
-            <ellipse cx="44" cy="22" rx="5" ry="8" fill="#e8dfd0" transform="rotate(15 44 22)" />
-            <ellipse cx="44" cy="22" rx="3" ry="5" fill="#d4a8a8" transform="rotate(15 44 22)" />
-            {/* Head */}
-            <circle cx="32" cy="30" r="14" fill="#f0ebe3" />
-            {/* Eyes */}
-            <circle className="poro-eye-l" cx="26" cy="28" r="2.5" fill="#2a1a0a" />
-            <circle className="poro-eye-r" cx="38" cy="28" r="2.5" fill="#2a1a0a" />
-            {/* Eye shine */}
-            <circle cx="27" cy="27" r="0.8" fill="#fff" />
-            <circle cx="39" cy="27" r="0.8" fill="#fff" />
-            {/* Nose */}
-            <ellipse cx="32" cy="32" rx="1.5" ry="1" fill="#c4887a" />
-            {/* Mouth */}
-            <path d="M29 34 Q32 37 35 34" stroke="#8a6a5a" strokeWidth="0.8" fill="none" strokeLinecap="round" />
-            {/* Tongue — tiny peek */}
-            <ellipse cx="32" cy="35.5" rx="1.2" ry="0.8" fill="#d4a8a8" />
+          <svg className="poro" width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            {/* Head outline */}
+            <circle cx="18" cy="19" r="10" strokeWidth="1.2" opacity="0.25" />
             {/* Horn */}
-            <path d="M32 16 L30 24 L34 24 Z" fill="#c9a84c" />
-            <path d="M32 16 L31 20 L33 20 Z" fill="#dcc06a" />
-            {/* Mustache whiskers */}
-            <path d="M22 31 Q18 29 14 30" stroke="#c9b898" strokeWidth="0.8" fill="none" />
-            <path d="M22 33 Q17 33 13 35" stroke="#c9b898" strokeWidth="0.8" fill="none" />
-            <path d="M42 31 Q46 29 50 30" stroke="#c9b898" strokeWidth="0.8" fill="none" />
-            <path d="M42 33 Q47 33 51 35" stroke="#c9b898" strokeWidth="0.8" fill="none" />
-            {/* Feet */}
-            <ellipse cx="24" cy="52" rx="5" ry="3" fill="#e8dfd0" />
-            <ellipse cx="40" cy="52" rx="5" ry="3" fill="#e8dfd0" />
+            <path d="M18 9 L17 14 L19 14 Z" fill="var(--accent-gold)" stroke="none" opacity="0.6" />
+            {/* Eyes — dots */}
+            <circle className="poro-eye-l" cx="14.5" cy="18" r="1.3" fill="currentColor" stroke="none" opacity="0.4" />
+            <circle className="poro-eye-r" cx="21.5" cy="18" r="1.3" fill="currentColor" stroke="none" opacity="0.4" />
+            {/* Tongue — the signature */}
+            <path className="poro-tongue" d="M17 23 Q18 26 19 23" strokeWidth="1.5" stroke="#c4887a" fill="#d4a8a8" opacity="0.7" />
+            {/* Whisker hints */}
+            <line x1="10" y1="20" x2="6" y2="19" strokeWidth="0.7" opacity="0.15" />
+            <line x1="26" y1="20" x2="30" y2="19" strokeWidth="0.7" opacity="0.15" />
           </svg>
         </div>
       </div>

@@ -97,36 +97,37 @@
   -webkit-text-fill-color: transparent;
 }
 
-/* Poro mascot */
+/* Poro — minimal ghost */
 .poro-container {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  animation: poroPeek 6s ease-in-out infinite;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+  animation: poroFloat 5s ease-in-out infinite;
 }
-.poro {
-  width: 100%;
-  height: 100%;
+.poro { width: 100%; height: 100%; }
+@keyframes poroFloat {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-3px); opacity: 1; }
 }
-/* Subtle idle bounce */
-@keyframes poroPeek {
-  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
-  15% { transform: translateY(-4px) rotate(2deg); opacity: 1; }
-  30% { transform: translateY(0) rotate(0deg); opacity: 1; }
-  50% { transform: translateY(-2px) rotate(-1deg); opacity: 1; }
-  65% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
-}
-/* Blink animation on the eyes */
+/* Blink */
 .poro-eye-l, .poro-eye-r {
-  animation: poroBlink 4s ease-in-out infinite;
+  animation: poroBlink 4.5s ease-in-out infinite;
 }
-.poro-eye-r {
-  animation-delay: 0.1s;
-}
+.poro-eye-r { animation-delay: 0.08s; }
 @keyframes poroBlink {
-  0%, 42%, 46%, 100% { transform: scaleY(1); }
-  44% { transform: scaleY(0.1); }
+  0%, 43%, 47%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(0.05); }
+}
+/* Tongue lick */
+.poro-tongue {
+  animation: poroLick 6s ease-in-out infinite;
+  transform-origin: 18px 23px;
+}
+@keyframes poroLick {
+  0%, 85%, 100% { transform: scaleY(1); }
+  90% { transform: scaleY(1.4) translateY(1px); }
+  95% { transform: scaleY(1); }
 }
 
 /* Stats Card – Riftbound compact module */
