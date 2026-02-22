@@ -290,16 +290,21 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         </div>
       </div>
 
-      {/* Scan Button – Central, legendary */}
+      {/* Scan Button – Central */}
       <div className="home-scan-row anim-fade-in-delay-2">
         <button className="scan-btn-legendary" onClick={handleDirectCameraCapture}>
           <div className="scan-btn-glow"></div>
           <div className="scan-btn-inner">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
+            {/* Scope icon matching the app logo */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="4"/>
+              <line x1="12" y1="2" x2="12" y2="6"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="6" y2="12"/>
+              <line x1="18" y1="12" x2="22" y2="12"/>
             </svg>
-            <span className="scan-btn-label">Scan Card</span>
+            <span className="scan-btn-label">Scan Now</span>
           </div>
         </button>
       </div>
@@ -366,9 +371,22 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
                 </div>
                 <div className="history-meta">
                   <span className={`history-badge ${entry.action}`}>
-                    {entry.action === 'added' ? `✅ +${entry.quantity}${entry.isFoil ? ' ✨' : ''}`
-                      : entry.action === 'removed' ? `🔻 −${entry.quantity}`
-                      : '⏭ Tap to resume'}
+                    {entry.action === 'added' ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                        {` +${entry.quantity}${entry.isFoil ? ' foil' : ''}`}
+                      </>
+                    ) : entry.action === 'removed' ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        {` −${entry.quantity}`}
+                      </>
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+                        {' Resume'}
+                      </>
+                    )}
                   </span>
                   <span className="history-time">{timeAgo(entry.timestamp)}</span>
                 </div>
