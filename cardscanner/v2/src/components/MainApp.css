@@ -97,38 +97,74 @@
   -webkit-text-fill-color: transparent;
 }
 
-/* Poro — minimal ghost */
-.poro-container {
+/* Scan Score — highscore badge */
+.scan-score {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  color: var(--text-muted);
-  animation: poroFloat 5s ease-in-out infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 8px 14px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  min-width: 58px;
 }
-.poro { width: 100%; height: 100%; }
-@keyframes poroFloat {
-  0%, 100% { transform: translateY(0); opacity: 0.7; }
-  50% { transform: translateY(-3px); opacity: 1; }
+.scan-score-num {
+  font-size: 24px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
-/* Blink */
-.poro-eye-l, .poro-eye-r {
-  animation: poroBlink 4.5s ease-in-out infinite;
+.scan-score-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.5;
+  margin-top: 1px;
 }
-.poro-eye-r { animation-delay: 0.08s; }
-@keyframes poroBlink {
-  0%, 43%, 47%, 100% { transform: scaleY(1); }
-  45% { transform: scaleY(0.05); }
+.scan-score-rank {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
-/* Tongue lick */
-.poro-tongue {
-  animation: poroLick 6s ease-in-out infinite;
-  transform-origin: 18px 23px;
+/* Rank tiers */
+.rank-common .scan-score-num { color: var(--text-secondary); }
+.rank-common .scan-score-rank { color: var(--text-muted); background: rgba(255,255,255,0.04); }
+
+.rank-uncommon .scan-score-num { color: #a3e635; }
+.rank-uncommon .scan-score-rank { color: #a3e635; background: rgba(163,230,53,0.08); }
+
+.rank-rare .scan-score-num { color: #60a5fa; }
+.rank-rare .scan-score-rank { color: #60a5fa; background: rgba(96,165,250,0.08); }
+
+.rank-epic .scan-score-num { color: #c084fc; }
+.rank-epic .scan-score-rank { color: #c084fc; background: rgba(192,132,252,0.08); }
+.rank-epic { border-color: rgba(192,132,252,0.12); }
+
+.rank-legendary .scan-score-num {
+  background: linear-gradient(135deg, var(--accent-gold), #dc7828);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-@keyframes poroLick {
-  0%, 85%, 100% { transform: scaleY(1); }
-  90% { transform: scaleY(1.4) translateY(1px); }
-  95% { transform: scaleY(1); }
+.rank-legendary .scan-score-rank { color: var(--accent-gold); background: rgba(201,168,76,0.1); }
+.rank-legendary { border-color: rgba(201,168,76,0.15); }
+
+.rank-mythic .scan-score-num {
+  background: linear-gradient(135deg, #f472b6, #c084fc, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
+.rank-mythic .scan-score-rank {
+  background: linear-gradient(135deg, rgba(244,114,182,0.12), rgba(192,132,252,0.12));
+  color: #e879f9;
+}
+.rank-mythic { border-color: rgba(232,121,249,0.15); }
 
 /* Stats Card – Riftbound compact module */
 .home-stats-card {

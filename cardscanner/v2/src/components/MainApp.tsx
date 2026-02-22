@@ -317,29 +317,29 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
   const renderHome = () => (
     <div className="home-view">
-      {/* Greeting */}
+      {/* Greeting + Scan Score */}
       <div className="home-greeting anim-fade-in">
         <div className="greeting-content">
           <h2 className="greeting-text">Greetings,</h2>
           <h1 className="greeting-name">{nickname}</h1>
         </div>
-        {/* Poro — minimal line sketch, just the vibe */}
-        <div className="poro-container">
-          <svg className="poro" width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-            {/* Head outline */}
-            <circle cx="18" cy="19" r="10" strokeWidth="1.2" opacity="0.25" />
-            {/* Horn */}
-            <path d="M18 9 L17 14 L19 14 Z" fill="var(--accent-gold)" stroke="none" opacity="0.6" />
-            {/* Eyes — dots */}
-            <circle className="poro-eye-l" cx="14.5" cy="18" r="1.3" fill="currentColor" stroke="none" opacity="0.4" />
-            <circle className="poro-eye-r" cx="21.5" cy="18" r="1.3" fill="currentColor" stroke="none" opacity="0.4" />
-            {/* Tongue — the signature */}
-            <path className="poro-tongue" d="M17 23 Q18 26 19 23" strokeWidth="1.5" stroke="#c4887a" fill="#d4a8a8" opacity="0.7" />
-            {/* Whisker hints */}
-            <line x1="10" y1="20" x2="6" y2="19" strokeWidth="0.7" opacity="0.15" />
-            <line x1="26" y1="20" x2="30" y2="19" strokeWidth="0.7" opacity="0.15" />
-          </svg>
-        </div>
+        {/* Scan Score — highscore flex */}
+        {(() => {
+          const totalScans = history.filter(e => e.action === 'added').reduce((sum, e) => sum + e.quantity, 0);
+          const rank = totalScans >= 1000 ? { label: 'Mythic', cls: 'rank-mythic' }
+            : totalScans >= 500 ? { label: 'Legendary', cls: 'rank-legendary' }
+            : totalScans >= 200 ? { label: 'Epic', cls: 'rank-epic' }
+            : totalScans >= 50 ? { label: 'Rare', cls: 'rank-rare' }
+            : totalScans >= 10 ? { label: 'Uncommon', cls: 'rank-uncommon' }
+            : { label: 'Common', cls: 'rank-common' };
+          return totalScans > 0 ? (
+            <div className={`scan-score ${rank.cls}`}>
+              <span className="scan-score-num">{totalScans}</span>
+              <span className="scan-score-label">scans</span>
+              <span className="scan-score-rank">{rank.label}</span>
+            </div>
+          ) : null;
+        })()}
       </div>
 
       {/* Collection Module – Riftbound */}
