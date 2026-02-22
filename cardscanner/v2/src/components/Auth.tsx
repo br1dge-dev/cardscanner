@@ -31,7 +31,17 @@ export const Auth: React.FC<AuthProps> = ({
     <div className="auth-container">
       <div className="auth-hero">
         <div className="auth-brand">
-          <h1>Card Scanner</h1>
+          <div className="auth-logo">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="4"/>
+              <line x1="12" y1="2" x2="12" y2="6"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="6" y2="12"/>
+              <line x1="18" y1="12" x2="22" y2="12"/>
+            </svg>
+          </div>
+          <h1>PORO SCOPE</h1>
           <p>Scan. Match. Collect.</p>
         </div>
       </div>
@@ -71,7 +81,7 @@ export const Auth: React.FC<AuthProps> = ({
           Don't have an account? <a href="https://riftbound.gg" target="_blank" rel="noopener">Create one on DotGG</a>
         </div>
         
-        <div className="auth-powered">Powered by DotGG</div>
+        <div className="auth-powered">Powered by DotGG · Not affiliated with DotGG</div>
       </form>
     </div>
   );

@@ -19,6 +19,7 @@ interface MenuProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserType;
+  nickname?: string;
   currentGame: Game;
   onSelectGame: () => void;
   onViewCollection: () => void;
@@ -31,6 +32,7 @@ export const Menu: React.FC<MenuProps> = ({
   isOpen,
   onClose,
   user,
+  nickname,
   currentGame,
   onSelectGame,
   onViewCollection,
@@ -86,7 +88,7 @@ export const Menu: React.FC<MenuProps> = ({
             <User size={32} />
           </div>
           <div className="menu-user-info">
-            <span className="menu-username">{user.username}</span>
+            <span className="menu-username">{nickname || user.username}</span>
             <span className="menu-email">{user.email}</span>
           </div>
         </div>

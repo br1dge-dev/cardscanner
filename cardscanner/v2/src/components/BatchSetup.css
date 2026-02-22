@@ -1,0 +1,101 @@
+.batch-setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.batch-setup-modal {
+  background: var(--card-bg, #1a1a2e);
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 380px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.batch-setup-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  text-align: center;
+}
+
+.batch-setup-desc {
+  font-size: 14px;
+  color: var(--text-secondary, #888);
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.batch-setup-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batch-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+}
+
+.batch-option:active {
+  transform: scale(0.97);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.batch-option-primary {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.batch-option-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  width: 40px;
+  text-align: center;
+}
+
+.batch-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.batch-option-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.batch-option-hint {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+
+.batch-setup-cancel {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary, #888);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}

@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Check, Plus, Minus, Save, X, AlertCircle } from 'lucide-react';
-import type { CardMatch } from '../types';
+import type { CardMatch, UserData } from '../types';
 import './CardResult.css';
 
 interface CardResultProps {
@@ -14,10 +14,29 @@ interface CardResultProps {
   isSaving?: boolean;
   debugMode?: boolean;
   marketplace?: 'cardmarket' | 'tcgplayer';
+  userData?: UserData | null;
 }
 
 // Normalize "1"/true/etc to boolean
 const toBool = (v: unknown): boolean => v === true || v === '1' || v === 1;
+
+// Sub-component: show collection ownership
+const CollectionBadge: React.FC<{ cardId: string; userData: UserData | null }> = ({ cardId, userData }) => {
+  if (!userData) return null;
+  const item = userData.collection.find(c => c.card === cardId);
+  if (!item) return <div className="collection-badge new">New card</div>;
+  const std = parseInt(item.standard) || 0;
+  const foil = parseInt(item.foil) || 0;
+  const total = std + foil;
+  if (total === 0) return <div className="collection-badge new">New card</div>;
+  return (
+    <div className="collection-badge owned">
+      <span className="cb-owned-text">You own: <strong>{total}</strong></span>
+      {std > 0 && <span className="cb-std">{std} standard</span>}
+      {foil > 0 && <span className="cb-foil">✨ {foil} foil</span>}
+    </div>
+  );
+};
 
 // Riftbound rarity → glow class
 const getRarityGlow = (rarity?: string): string => {
@@ -53,7 +72,8 @@ export const CardResult: React.FC<CardResultProps> = ({
   onClose,
   isSaving = false,
   debugMode = false,
-  marketplace = 'cardmarket'
+  marketplace = 'cardmarket',
+  userData = null
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [showCapturedImage, setShowCapturedImage] = useState(false);
@@ -148,9 +168,9 @@ export const CardResult: React.FC<CardResultProps> = ({
     <div className="card-result-overlay" onClick={onClose}>
       <div className={`card-result-modal ${glowClass}`} onClick={e => e.stopPropagation()}>
         <div className="card-result-header">
-          <div className="match-badge">
+          <div className={`match-badge ${confidence < 0.7 ? 'low-confidence' : ''}`}>
             <Check size={14} />
-            <span>{Math.round(confidence * 100)}%</span>
+            <span>{Math.round(confidence * 100)}% match</span>
           </div>
           <span className={`rarity-badge ${glowClass}`}>{getRarityLabel(card.rarity)}</span>
           <button className="close-btn" onClick={onClose}><X size={20} /></button>
@@ -189,6 +209,9 @@ export const CardResult: React.FC<CardResultProps> = ({
                 </div>
 
                 {renderPrice()}
+
+                {/* Collection count */}
+                <CollectionBadge cardId={card.id} userData={userData} />
               </div>
             </>
           )}
@@ -248,6 +271,11 @@ export const CardResult: React.FC<CardResultProps> = ({
                 }
               </>
             )}
+          </button>
+
+          {/* Wrong card / re-scan option */}
+          <button className="wrong-card-btn" onClick={onClose}>
+            ❌ Wrong card? Scan again
           </button>
         </div>
       </div>
