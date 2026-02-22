@@ -85,18 +85,6 @@ export interface CollectionCard {
   wish?: number;
 }
 
-// Batch scan types
-export type BatchAction = 'auto-add-standard' | 'auto-add-foil' | 'review-each';
-
-export interface BatchResultEntry {
-  cardId: string;
-  cardName: string;
-  cardNumber: string;
-  cardImage: string;
-  status: 'added' | 'failed' | 'skipped' | 'not_found';
-  error?: string;
-}
-
 export interface UserData {
   user: {
     user_id: number;

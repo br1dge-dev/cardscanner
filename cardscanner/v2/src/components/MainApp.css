@@ -244,17 +244,6 @@
     0 0 12px -3px rgba(201, 168, 76, 0.1);
   animation: emberPulse2 5.5s ease-in-out infinite;
 }
-.scan-batch.glow-border { border-color: rgba(139, 92, 246, 0.12); }
-.scan-batch.glow-border::before {
-  box-shadow:
-    inset 0 0 0 1px rgba(139, 92, 246, 0.08),
-    0 0 8px -2px rgba(139, 92, 246, 0.15);
-}
-.scan-batch.glow-border::after {
-  box-shadow:
-    inset 0 0 0 1px rgba(139, 92, 246, 0.05),
-    0 0 12px -3px rgba(139, 92, 246, 0.1);
-}
 @keyframes emberPulse1 {
   0%, 100% { opacity: 0.3; }
   40% { opacity: 0.8; }
@@ -267,36 +256,17 @@
   85% { opacity: 0.3; }
 }
 
-/* Scan Tiles – Single/Batch split */
-.home-scan-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.scan-tile {
+/* Collection card header */
+.stats-card-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: var(--bg-card);
-  border: 1px solid rgba(201, 168, 76, 0.25);
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-  -webkit-tap-highlight-color: transparent;
-  text-align: left;
-  font-family: inherit;
+  gap: 8px;
+  padding: 12px 0 0;
 }
-.scan-tile:active {
-  transform: scale(0.97);
-  border-color: var(--accent-gold);
-  background: rgba(201, 168, 76, 0.06);
-}
-.scan-tile-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+.collection-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: rgba(201, 168, 76, 0.12);
   display: flex;
   align-items: center;
@@ -304,65 +274,98 @@
   color: var(--accent-gold);
   flex-shrink: 0;
 }
-.scan-batch .scan-tile-icon {
-  background: rgba(139, 92, 246, 0.12);
-  color: #a78bfa;
-}
-.scan-tile-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.scan-tile-label {
-  font-size: 14px;
+.collection-title {
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
-.scan-tile-hint {
-  font-size: 11px;
+.stats-nav-arrow {
+  font-size: 24px;
   color: var(--text-muted);
+  flex-shrink: 0;
+  opacity: 0.5;
 }
 
-/* Batch Mode Banner */
-.batch-banner {
-  position: fixed;
-  top: calc(var(--safe-top) + 60px);
-  left: 16px;
-  right: 16px;
+/* Scan Button – Central, legendary */
+.home-scan-row {
+  margin-bottom: 16px;
+}
+.scan-btn-legendary {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 12px;
-  backdrop-filter: blur(12px);
-  z-index: 550;
-  animation: slideDown 0.3s ease;
-}
-.batch-banner-text {
-  font-size: 14px;
-  font-weight: 700;
-  color: #a78bfa;
-}
-.batch-banner-count {
-  font-size: 13px;
-  color: var(--text-secondary);
-  flex: 1;
-}
-.batch-banner-stop {
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
+  justify-content: center;
+  width: 100%;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.1), rgba(220, 120, 40, 0.08));
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 16px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   font-family: inherit;
+  overflow: hidden;
+  isolation: isolate;
 }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.scan-btn-legendary:active {
+  transform: scale(0.97);
+  border-color: var(--accent-gold);
+}
+
+/* Outer animated glow ring */
+.scan-btn-glow {
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 0;
+}
+.scan-btn-glow::before,
+.scan-btn-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.scan-btn-glow::before {
+  box-shadow:
+    0 0 12px 1px rgba(220, 120, 40, 0.25),
+    0 0 24px 2px rgba(201, 168, 76, 0.1);
+  animation: scanGlow1 3s ease-in-out infinite;
+}
+.scan-btn-glow::after {
+  box-shadow:
+    0 0 8px 1px rgba(201, 168, 76, 0.2),
+    0 0 20px 2px rgba(220, 120, 40, 0.08);
+  animation: scanGlow2 4.5s ease-in-out infinite;
+}
+@keyframes scanGlow1 {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@keyframes scanGlow2 {
+  0%, 100% { opacity: 0.6; }
+  35% { opacity: 0.2; }
+  70% { opacity: 0.9; }
+}
+
+.scan-btn-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+  color: var(--accent-gold);
+}
+.scan-btn-label {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, var(--accent-gold), #dc7828);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
 /* Action Tiles */
 .home-actions {
@@ -1177,10 +1180,10 @@
 }
 
 /* Tap feedback for interactive elements */
-.scan-tile, .action-tile {
+.scan-btn-legendary, .action-tile {
   transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
-.scan-tile:active, .action-tile:active {
+.scan-btn-legendary:active, .action-tile:active {
   transform: scale(0.95) !important;
   filter: brightness(1.1);
 }
