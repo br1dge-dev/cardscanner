@@ -159,10 +159,18 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         // Brief hold on processing overlay, then reveal card result smoothly
         setShowResult(false);
         setScanStatus('found');
-        setTimeout(() => setShowResult(true), 100);
+        // Give the processing overlay time to breathe before revealing card
+        setTimeout(() => setShowResult(true), 600);
       } else {
         setScanResult(null);
         setScanStatus('not_found');
+        // Log failed match with captured image so user can retry from history
+        addEntry({
+          cardId: '', cardName: ocrData.number ? `Scan: ${ocrData.number}` : 'Unrecognized scan',
+          cardNumber: ocrData.number || '—',
+          cardImage: imageData, // preserve the captured image for retry
+          action: 'skipped', isFoil: false, quantity: 0
+        });
       }
       setShowCamera(false);
     } catch (err) {
@@ -173,6 +181,13 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       });
       setScanStatus('error');
       setShowCamera(false);
+      // Log error with image for retry
+      addEntry({
+        cardId: '', cardName: 'Scan failed',
+        cardNumber: '—',
+        cardImage: imageData,
+        action: 'skipped', isFoil: false, quantity: 0
+      });
     }
   }, [processImage, findMatches, addEntry]);
 
@@ -224,7 +239,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         // Show success toast with card info
         if (scanResult) {
           setSuccessToast({ cardName: scanResult.card.name, isFoil });
-          setTimeout(() => setSuccessToast(null), 2200);
+          setTimeout(() => setSuccessToast(null), 3000);
         }
         await loadCollection();
         setTimeout(() => {
@@ -232,7 +247,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           setCapturedImage(null);
           setScanStatus('idle');
           setShowResult(false);
-        }, 1800);
+        }, 2500);
       } else {
         setScanStatus('error');
       }
@@ -376,11 +391,21 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
                 className={`history-item ${entry.action === 'skipped' ? 'resumable' : ''}`}
                 onClick={() => {
                   if (entry.action === 'skipped') {
-                    // Resume: find card and re-open result
-                    const card = cards.find(c => c.id === entry.cardId);
-                    if (card) {
-                      setScanResult({ card, confidence: 1, matchedBy: 'number' });
-                      setScanStatus('found');
+                    if (entry.cardId) {
+                      // Known card was skipped — re-open result directly
+                      const card = cards.find(c => c.id === entry.cardId);
+                      if (card) {
+                        setScanResult({ card, confidence: 1, matchedBy: 'number' });
+                        setScanStatus('found');
+                        setShowResult(false);
+                        setTimeout(() => setShowResult(true), 350);
+                      }
+                    } else if (entry.cardImage) {
+                      // Failed/unrecognized scan — re-run OCR on the saved image
+                      handleCapture(entry.cardImage);
+                    } else {
+                      // No image saved — trigger new scan
+                      handleDirectCameraCapture();
                     }
                   }
                 }}
@@ -409,8 +434,14 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
                       </>
                     ) : (
                       <>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
-                        {' Resume'}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {entry.cardId ? (
+                            <><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></>
+                          ) : (
+                            <><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></>
+                          )}
+                        </svg>
+                        {entry.cardId ? ' Resume' : ' Retry'}
                       </>
                     )}
                   </span>
