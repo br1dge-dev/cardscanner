@@ -326,12 +326,12 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         {/* Scan Score — highscore flex */}
         {(() => {
           const totalScans = history.filter(e => e.action === 'added').reduce((sum, e) => sum + e.quantity, 0);
-          const rank = totalScans >= 1000 ? { label: 'Mythic', cls: 'rank-mythic' }
-            : totalScans >= 500 ? { label: 'Legendary', cls: 'rank-legendary' }
-            : totalScans >= 200 ? { label: 'Epic', cls: 'rank-epic' }
-            : totalScans >= 50 ? { label: 'Rare', cls: 'rank-rare' }
-            : totalScans >= 10 ? { label: 'Uncommon', cls: 'rank-uncommon' }
-            : { label: 'Common', cls: 'rank-common' };
+          const rank = totalScans >= 1000 ? { label: 'Rift Walker', cls: 'rank-mythic' }
+            : totalScans >= 500 ? { label: 'Archmage', cls: 'rank-legendary' }
+            : totalScans >= 200 ? { label: 'Lorekeeper', cls: 'rank-epic' }
+            : totalScans >= 50 ? { label: 'Scout', cls: 'rank-rare' }
+            : totalScans >= 10 ? { label: 'Initiate', cls: 'rank-uncommon' }
+            : { label: 'Novice', cls: 'rank-common' };
           return totalScans > 0 ? (
             <div className={`scan-score ${rank.cls}`}>
               <span className="scan-score-num">{totalScans}</span>
