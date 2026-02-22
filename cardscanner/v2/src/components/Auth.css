@@ -21,10 +21,16 @@
   width: 100%;
 }
 
+.auth-logo {
+  color: var(--accent-gold);
+  filter: drop-shadow(0 0 8px var(--accent-gold-glow));
+  margin-bottom: 8px;
+}
+
 .auth-brand h1 {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: 3px;
   background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

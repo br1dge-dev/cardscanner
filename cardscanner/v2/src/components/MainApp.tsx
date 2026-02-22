@@ -1,17 +1,19 @@
 /**
  * MainApp Component - Main application with home screen navigation
  */
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Menu } from './Menu';
 import { Camera } from './Camera';
 import { CardResult } from './CardResult';
+import { BatchSetup } from './BatchSetup';
+import { BatchSummary } from './BatchSummary';
 import { useCards } from '../hooks/useCards';
 import { useNativeOCR, type OCRDebugInfo } from '../hooks/useNativeOCR';
 import { useCardMatching } from '../hooks/useCardMatching';
 import { useScanHistory } from '../hooks/useScanHistory';
 import { dotGGClient } from '../api/dotgg';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
-import type { User, CardMatch, Game } from '../types';
+import type { User, CardMatch, Game, UserData, BatchAction, BatchResultEntry } from '../types';
 import './MainApp.css';
 
 interface MainAppProps {
@@ -41,7 +43,18 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   // Collection state
   const [collectionCount, setCollectionCount] = useState(0);
   const [uniqueCount, setUniqueCount] = useState(0);
+  const [collectionValue, setCollectionValue] = useState(0);
   const [nickname, setNickname] = useState(user.username);
+  const [userData, setUserData] = useState<UserData | null>(null);
+
+  // Batch scan state
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchCount, setBatchCount] = useState(0);
+  const [batchAction, setBatchAction] = useState<BatchAction>('auto-add-standard');
+  const [batchResults, setBatchResults] = useState<BatchResultEntry[]>([]);
+  const [showBatchSetup, setShowBatchSetup] = useState(false);
+  const [showBatchSummary, setShowBatchSummary] = useState(false);
+  const [batchToast, setBatchToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Scan state
   const [showCamera, setShowCamera] = useState(false);
@@ -62,23 +75,68 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const { findMatches, isMatching } = useCardMatching(cards);
   const { history, addEntry } = useScanHistory();
 
+  // Gyroscope / device motion for parallax
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const tiltRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      const x = Math.max(-15, Math.min(15, (e.gamma || 0) * 0.3));
+      const y = Math.max(-15, Math.min(15, ((e.beta || 0) - 45) * 0.3));
+      tiltRef.current = { x, y };
+    };
+    const animate = () => {
+      setTilt(prev => ({
+        x: prev.x + (tiltRef.current.x - prev.x) * 0.08,
+        y: prev.y + (tiltRef.current.y - prev.y) * 0.08
+      }));
+      rafId = requestAnimationFrame(animate);
+    };
+    let rafId = requestAnimationFrame(animate);
+    window.addEventListener('deviceorientation', handleOrientation);
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  const tiltStyle = (intensity: number = 1) => ({
+    transform: `translate(${tilt.x * intensity}px, ${tilt.y * intensity}px)`,
+  });
+
   useEffect(() => { localStorage.setItem('cardscanner_game', currentGame); }, [currentGame]);
   useEffect(() => { localStorage.setItem('cardscanner_marketplace', marketplace); }, [marketplace]);
 
-  useEffect(() => { loadCollection(); }, [user]);
-
-  const loadCollection = async () => {
+  const loadCollection = useCallback(async () => {
     const result = await dotGGClient.getUserData(user);
     if (result.success && result.data) {
       if (result.data.user?.nickname) setNickname(result.data.user.nickname);
-      const totalCards = result.data.collection.reduce((sum, item) =>
-        sum + (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0), 0);
-      const uniqueCards = result.data.collection.filter(item =>
-        (parseInt(item.standard) || 0) + (parseInt(item.foil) || 0) > 0).length;
-      setCollectionCount(totalCards);
-      setUniqueCount(uniqueCards);
+      setUserData(result.data);
+      let total = 0, unique = 0, value = 0;
+      for (const item of result.data.collection) {
+        const std = parseInt(item.standard) || 0;
+        const foil = parseInt(item.foil) || 0;
+        const count = std + foil;
+        if (count > 0) {
+          total += count;
+          unique++;
+          // Match to card data for price
+          const card = cards.find(c => c.id === item.card);
+          if (card) {
+            const useCardmarket = marketplace === 'cardmarket';
+            const stdPrice = useCardmarket ? (card.cmPrice || 0) : (card.price || 0);
+            const foilPr = useCardmarket ? (card.cmFoilPrice || 0) : (card.foilPrice || 0);
+            value += std * stdPrice + foil * (foilPr || stdPrice);
+          }
+        }
+      }
+      setCollectionCount(total);
+      setUniqueCount(unique);
+      setCollectionValue(value);
     }
-  };
+  }, [user, cards, marketplace]);
+
+  useEffect(() => { loadCollection(); }, [loadCollection]);
 
   const handleGameSelect = (game: Game) => {
     const g = SUPPORTED_GAMES.find(g => g.id === game);
@@ -86,6 +144,82 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     setCurrentGame(game);
     setIsGameSelectorOpen(false);
   };
+
+  // ---- Batch helpers ----
+  const showBatchToast = useCallback((message: string, type: 'success' | 'error') => {
+    setBatchToast({ message, type });
+    setTimeout(() => setBatchToast(null), type === 'success' ? 600 : 500);
+  }, []);
+
+  const continueBatchScan = useCallback(() => {
+    // Small delay then trigger next camera capture
+    setTimeout(() => {
+      setScanResult(null);
+      setCapturedImage(null);
+      setScanStatus('idle');
+      setOcrDebugInfo(null);
+      handleDirectCameraCapture();
+    }, 300);
+  }, [/* handleDirectCameraCapture added below via ref */]);
+
+  // Use ref to break circular dependency
+  const continueBatchScanRef = useRef(continueBatchScan);
+  continueBatchScanRef.current = continueBatchScan;
+
+  const batchAutoSave = useCallback(async (match: CardMatch, isFoil: boolean) => {
+    try {
+      const cardId = match.card.id;
+      const existingItem = userData?.collection.find(c => c.card === cardId);
+      const currentCount = isFoil
+        ? (parseInt(existingItem?.foil || '0'))
+        : (parseInt(existingItem?.standard || '0'));
+      const newCount = currentCount + 1;
+
+      const result = await dotGGClient.addCardToCollection(user, cardId, newCount, isFoil);
+      if (result.success) {
+        addEntry({
+          cardId: match.card.id,
+          cardName: match.card.name,
+          cardNumber: match.card.number,
+          cardImage: match.card.imageUrl || match.card.image || '',
+          action: 'added',
+          isFoil,
+          quantity: 1
+        });
+        setBatchResults(prev => [...prev, {
+          cardId: match.card.id,
+          cardName: match.card.name,
+          cardNumber: match.card.number,
+          cardImage: match.card.imageUrl || match.card.image || '',
+          status: 'added'
+        }]);
+        setBatchCount(prev => prev + 1);
+        showBatchToast(`✅ ${match.card.name}`, 'success');
+      } else {
+        setBatchResults(prev => [...prev, {
+          cardId: match.card.id,
+          cardName: match.card.name,
+          cardNumber: match.card.number,
+          cardImage: match.card.imageUrl || match.card.image || '',
+          status: 'failed',
+          error: 'Save failed'
+        }]);
+        showBatchToast(`❌ Save failed`, 'error');
+      }
+    } catch (err) {
+      setBatchResults(prev => [...prev, {
+        cardId: match.card.id,
+        cardName: match.card.name,
+        cardNumber: match.card.number,
+        cardImage: match.card.imageUrl || match.card.image || '',
+        status: 'failed',
+        error: err instanceof Error ? err.message : 'Unknown error'
+      }]);
+      showBatchToast(`❌ Error saving`, 'error');
+    }
+    // Always continue in batch mode regardless of success/failure
+    continueBatchScanRef.current();
+  }, [user, userData, addEntry, showBatchToast]);
 
   // ---- Scan Logic ----
   const handleCapture = useCallback(async (imageData: string) => {
@@ -99,9 +233,27 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       if (result.bestMatch) {
         setScanResult(result.bestMatch);
         setScanStatus('found');
+
+        // Auto-add in batch mode (non-review)
+        if (batchMode && batchAction !== 'review-each') {
+          const isFoil = batchAction === 'auto-add-foil';
+          batchAutoSave(result.bestMatch, isFoil);
+          return;
+        }
       } else {
         setScanResult(null);
         setScanStatus('not_found');
+
+        // In batch auto-add mode, skip and continue
+        if (batchMode && batchAction !== 'review-each') {
+          setBatchResults(prev => [...prev, {
+            cardId: '', cardName: '', cardNumber: '',
+            cardImage: '', status: 'not_found', error: 'No match'
+          }]);
+          showBatchToast('❌ No match — skipping', 'error');
+          continueBatchScanRef.current();
+          return;
+        }
       }
       setShowCamera(false);
     } catch (err) {
@@ -112,8 +264,19 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       });
       setScanStatus('error');
       setShowCamera(false);
+
+      // In batch auto-add mode, don't die — continue
+      if (batchMode && batchAction !== 'review-each') {
+        setBatchResults(prev => [...prev, {
+          cardId: '', cardName: '', cardNumber: '',
+          cardImage: '', status: 'failed', error: 'OCR/scan error'
+        }]);
+        showBatchToast('❌ Scan error — skipping', 'error');
+        continueBatchScanRef.current();
+        return;
+      }
     }
-  }, [processImage, findMatches]);
+  }, [processImage, findMatches, batchMode, batchAction, batchAutoSave, showBatchToast]);
 
   const handleDirectCameraCapture = useCallback(async () => {
     try {
@@ -127,15 +290,39 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       }
     } catch (err) {
       console.log('Camera cancelled:', err);
+      // If camera was cancelled during batch mode, end the batch
+      if (batchMode) {
+        endBatchMode();
+      }
     }
-  }, [handleCapture, cards.length]);
+  }, [handleCapture, cards.length, batchMode]);
 
-  const handleSaveCard = useCallback(async (cardId: string, quantity: number, isFoil: boolean = false) => {
+  // End batch mode and show summary
+  const endBatchMode = useCallback(() => {
+    setBatchMode(false);
+    setScanStatus('idle');
+    setScanResult(null);
+    setCapturedImage(null);
+    setOcrDebugInfo(null);
+    if (batchResults.length > 0) {
+      setShowBatchSummary(true);
+    }
+    // Reload collection once at end of batch
+    loadCollection();
+  }, [batchResults.length, loadCollection]);
+
+  const handleSaveCard = useCallback(async (cardId: string, deltaQuantity: number, isFoil: boolean = false) => {
     setIsSaving(true);
-    const isRemoval = quantity < 0;
-    const apiQuantity = isRemoval ? 0 : quantity; // API: 0 removes, positive adds
+    
+    // CRITICAL: API expects ABSOLUTE values, not deltas!
+    const existingItem = userData?.collection.find(c => c.card === cardId);
+    const currentStd = parseInt(existingItem?.standard || '0');
+    const currentFoil = parseInt(existingItem?.foil || '0');
+    const currentCount = isFoil ? currentFoil : currentStd;
+    const newCount = Math.max(0, currentCount + deltaQuantity);
+    
     try {
-      const result = await dotGGClient.addCardToCollection(user, cardId, apiQuantity, isFoil);
+      const result = await dotGGClient.addCardToCollection(user, cardId, newCount, isFoil);
       if (result.success) {
         if (scanResult) {
           addEntry({
@@ -143,24 +330,50 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             cardName: scanResult.card.name,
             cardNumber: scanResult.card.number,
             cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
-            action: isRemoval ? 'removed' : 'added',
+            action: newCount === 0 ? 'removed' : (deltaQuantity < 0 ? 'removed' : 'added'),
             isFoil,
-            quantity: Math.abs(quantity)
+            quantity: Math.abs(deltaQuantity)
           });
         }
         setScanStatus('saved');
-        await loadCollection();
-        setTimeout(() => {
-          setScanResult(null);
-          setCapturedImage(null);
-          setScanStatus('idle');
-        }, 1500);
+
+        if (batchMode) {
+          // Track result for summary
+          if (scanResult) {
+            setBatchResults(prev => [...prev, {
+              cardId: scanResult.card.id,
+              cardName: scanResult.card.name,
+              cardNumber: scanResult.card.number,
+              cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
+              status: 'added'
+            }]);
+          }
+          setBatchCount(prev => prev + 1);
+          // Don't reload collection mid-batch — do it at the end
+          setTimeout(() => {
+            setScanResult(null);
+            setCapturedImage(null);
+            setScanStatus('idle');
+            handleDirectCameraCapture();
+          }, 800);
+        } else {
+          await loadCollection();
+          setTimeout(() => {
+            setScanResult(null);
+            setCapturedImage(null);
+            setScanStatus('idle');
+          }, 1500);
+        }
       } else {
         setScanStatus('error');
+        // In batch review mode, don't die — let user retry or skip
       }
-    } catch { setScanStatus('error'); }
-    finally { setIsSaving(false); }
-  }, [user, scanResult, addEntry]);
+    } catch {
+      setScanStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [user, scanResult, addEntry, userData, batchMode, handleDirectCameraCapture, loadCollection]);
 
   const handleCloseResult = useCallback(() => {
     // Log skip to history
@@ -172,11 +385,26 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
         action: 'skipped', isFoil: false, quantity: 0
       });
+      // Track skip in batch results
+      if (batchMode) {
+        setBatchResults(prev => [...prev, {
+          cardId: scanResult.card.id,
+          cardName: scanResult.card.name,
+          cardNumber: scanResult.card.number,
+          cardImage: scanResult.card.imageUrl || scanResult.card.image || '',
+          status: 'skipped'
+        }]);
+      }
     }
     setScanResult(null);
     setCapturedImage(null);
     setScanStatus('idle');
-  }, [scanResult, addEntry]);
+
+    // In batch review mode, continue to next scan
+    if (batchMode && batchAction === 'review-each') {
+      setTimeout(() => handleDirectCameraCapture(), 300);
+    }
+  }, [scanResult, addEntry, batchMode, batchAction, handleDirectCameraCapture]);
 
   // ---- Time formatting ----
   const timeAgo = (ts: number) => {
@@ -194,47 +422,95 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const renderHome = () => (
     <div className="home-view">
       {/* Greeting */}
-      <div className="home-greeting">
-        <h2 className="greeting-text">Welcome back,</h2>
+      <div className="home-greeting anim-fade-in">
+        <h2 className="greeting-text">Greetings,</h2>
         <h1 className="greeting-name">{nickname}</h1>
       </div>
 
-      {/* Collection Card – Riftbound branded */}
-      <div className="home-stats-card">
-        <div className="stats-card-header">
-          <span className="stats-game-badge">⚔️ Riftbound</span>
-          <span className="stats-game-set">Origins · Spiritforged</span>
+      {/* Collection Module – Riftbound compact */}
+      <div className="home-stats-card glow-border anim-fade-in-delay-1" style={tiltStyle(0.5)}>
+        {/* Mini card tabs at top */}
+        <div className="set-tabs">
+          <div className="set-tab set-tab-origins active" title="Origins">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/>
+            </svg>
+            <span>OGN</span>
+          </div>
+          <div className="set-tab set-tab-spiritforged" title="Spiritforged — coming soon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+            <span>SPF</span>
+          </div>
         </div>
-        <div className="stats-row">
-          <div className="stat-block">
-            <span className="stat-number">{collectionCount}</span>
-            <span className="stat-desc">Total Cards</span>
+        <div className="stats-card-body">
+          <div className="stats-left">
+            <div className="stats-compact-row">
+              <div className="stat-pill">
+                <span className="stat-pill-num">{collectionCount}</span>
+                <span className="stat-pill-label">cards</span>
+              </div>
+              <div className="stat-pill">
+                <span className="stat-pill-num">{uniqueCount}</span>
+                <span className="stat-pill-label">unique</span>
+              </div>
+            </div>
+            {collectionValue > 0 && (
+              <div className="stats-value-row">
+                <span className="stats-value-amount">
+                  {marketplace === 'cardmarket' ? '€' : '$'}{collectionValue.toFixed(2)}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="stat-divider" />
-          <div className="stat-block">
-            <span className="stat-number">{uniqueCount}</span>
-            <span className="stat-desc">Unique</span>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-block">
-            <span className="stat-number">{cards.length}</span>
-            <span className="stat-desc">Database</span>
+          <div className="stats-eyecandy" style={tiltStyle(1.2)}>
+            {/* Stacked cards illustration */}
+            <div className="card-stack">
+              <div className="mini-card mc-3"></div>
+              <div className="mini-card mc-2"></div>
+              <div className="mini-card mc-1">
+                <span className="mc-icon">⚔️</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Action Tiles */}
-      <div className="home-actions">
-        <button className="action-tile action-scan" onClick={handleDirectCameraCapture}>
-          <div className="action-icon-wrap">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Scan Tiles – Split Single/Batch */}
+      <div className="home-scan-row anim-fade-in-delay-2">
+        <button className="scan-tile scan-single glow-border" onClick={() => { setBatchMode(false); handleDirectCameraCapture(); }}>
+          <div className="scan-tile-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </div>
-          <span className="action-label">Scan</span>
-          <span className="action-hint">Open camera</span>
+          <div className="scan-tile-text">
+            <span className="scan-tile-label">Single Scan</span>
+            <span className="scan-tile-hint">Scan & review one card</span>
+          </div>
         </button>
+        <button className="scan-tile scan-batch glow-border" onClick={() => setShowBatchSetup(true)}>
+          <div className="scan-tile-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="6" width="16" height="14" rx="2"/>
+              <path d="M6 2h16a2 2 0 0 1 2 2v12"/>
+              <circle cx="10" cy="13" r="3"/>
+            </svg>
+          </div>
+          <div className="scan-tile-text">
+            <span className="scan-tile-label">Batch Scan</span>
+            <span className="scan-tile-hint">Rapid-fire, auto-save</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="home-actions anim-fade-in-delay-3">
         <button className="action-tile action-library" onClick={() => setViewMode('collection')}>
           <div className="action-icon-wrap">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -401,8 +677,23 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
               <button className="btn-primary" onClick={() => { setScanStatus('idle'); handleDirectCameraCapture(); }}>
                 🔄 Try Again
               </button>
-              <button className="btn-secondary" onClick={() => { setScanStatus('idle'); setOcrDebugInfo(null); setCapturedImage(null); }}>
-                Cancel
+              {batchMode && batchAction === 'review-each' && (
+                <button className="btn-primary" onClick={() => {
+                  setBatchResults(prev => [...prev, {
+                    cardId: '', cardName: '', cardNumber: '',
+                    cardImage: '', status: 'not_found', error: 'Skipped'
+                  }]);
+                  setScanStatus('idle');
+                  handleDirectCameraCapture();
+                }}>
+                  ⏭ Skip & Next
+                </button>
+              )}
+              <button className="btn-secondary" onClick={() => {
+                setScanStatus('idle'); setOcrDebugInfo(null); setCapturedImage(null);
+                if (batchMode) endBatchMode();
+              }}>
+                {batchMode ? 'Stop Batch' : 'Cancel'}
               </button>
             </div>
           </div>
@@ -549,13 +840,26 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         <button className="menu-toggle-btn" onClick={() => setIsMenuOpen(true)} aria-label="Open menu">
           <span className="hamburger-icon">☰</span>
         </button>
-        <h1 className="app-title">Riftbound Scanner</h1>
-        {viewMode !== 'home' && (
+        <div className="app-title-group" style={tiltStyle(0.3)}>
+          <svg className="app-logo-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="4"/>
+            <line x1="12" y1="2" x2="12" y2="6"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="6" y2="12"/>
+            <line x1="18" y1="12" x2="22" y2="12"/>
+          </svg>
+          <h1 className="app-title">PORO SCOPE</h1>
+        </div>
+        {viewMode !== 'home' ? (
           <button className="header-home-btn" onClick={() => setViewMode('home')} aria-label="Home">
-            <span>🏠</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"/>
+            </svg>
           </button>
+        ) : (
+          <div style={{ width: 40 }} />
         )}
-        {viewMode === 'home' && <div style={{ width: 40 }} />}
       </header>
 
       {/* Main Content */}
@@ -575,9 +879,27 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         )}
       </main>
 
-      {/* Toast */}
-      {scanStatus === 'saved' && (
-        <div className="recent-scan-toast success">✅ Card added to collection!</div>
+      {/* Batch Mode Banner — always visible when batch is active */}
+      {batchMode && (
+        <div className="batch-banner">
+          <span className="batch-banner-text">⚡ {batchAction === 'review-each' ? 'Batch Review' : 'Auto-Add'}</span>
+          <span className="batch-banner-count">{batchCount} added</span>
+          <button className="batch-banner-stop" onClick={endBatchMode}>Stop</button>
+        </div>
+      )}
+
+      {/* Batch toast (auto-add feedback) */}
+      {batchToast && (
+        <div className={`recent-scan-toast ${batchToast.type === 'success' ? 'success' : 'error'}`}>
+          {batchToast.message}
+        </div>
+      )}
+
+      {/* Single mode save toast */}
+      {!batchMode && scanStatus === 'saved' && (
+        <div className="recent-scan-toast success">
+          ✅ Card added to collection!
+        </div>
       )}
 
       {/* Slide-out Menu */}
@@ -585,6 +907,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         user={user}
+        nickname={nickname}
         currentGame={currentGame}
         onSelectGame={() => { setIsMenuOpen(false); setIsGameSelectorOpen(true); }}
         onViewCollection={() => { setIsMenuOpen(false); setViewMode('collection'); }}
@@ -614,6 +937,32 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         </div>
       )}
 
+      {/* Batch Setup Modal */}
+      {showBatchSetup && (
+        <BatchSetup
+          onStart={(action) => {
+            setShowBatchSetup(false);
+            setBatchMode(true);
+            setBatchAction(action);
+            setBatchCount(0);
+            setBatchResults([]);
+            handleDirectCameraCapture();
+          }}
+          onCancel={() => setShowBatchSetup(false)}
+        />
+      )}
+
+      {/* Batch Summary Modal */}
+      {showBatchSummary && (
+        <BatchSummary
+          results={batchResults}
+          onDone={() => {
+            setShowBatchSummary(false);
+            setBatchResults([]);
+          }}
+        />
+      )}
+
       {/* Card Result Modal */}
       {scanResult !== null && (
         <CardResult
@@ -624,6 +973,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           isSaving={isSaving}
           debugMode={debugMode}
           marketplace={marketplace}
+          userData={userData}
         />
       )}
 

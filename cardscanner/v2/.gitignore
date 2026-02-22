@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# iOS
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+
+# Environment / Secrets
+.env
+.env.*
+
+# Capacitor
+ios/App/App/public/
+android/app/src/main/assets/public/

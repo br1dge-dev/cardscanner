@@ -84,3 +84,31 @@ export interface CollectionCard {
   trade?: number;
   wish?: number;
 }
+
+// Batch scan types
+export type BatchAction = 'auto-add-standard' | 'auto-add-foil' | 'review-each';
+
+export interface BatchResultEntry {
+  cardId: string;
+  cardName: string;
+  cardNumber: string;
+  cardImage: string;
+  status: 'added' | 'failed' | 'skipped' | 'not_found';
+  error?: string;
+}
+
+export interface UserData {
+  user: {
+    user_id: number;
+    nickname: string;
+    user_registered: string;
+  };
+  collection: Array<{
+    card: string;      // e.g., "OGN-117"
+    standard: string;  // count as string
+    foil: string;
+    total: string;
+    trade: string;
+    wish: string;
+  }>;
+}
