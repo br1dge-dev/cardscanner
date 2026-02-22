@@ -51,6 +51,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [scanResult, setScanResult] = useState<CardMatch | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found' | 'saved' | 'error'>('idle');
+  const [successToast, setSuccessToast] = useState<{ cardName: string; isFoil: boolean } | null>(null);
 
   // Debug & preferences
   const [debugMode, setDebugMode] = useState(false);
@@ -136,6 +137,15 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
   // ---- Scan Logic ----
   const handleCapture = useCallback(async (imageData: string) => {
+    if (!imageData) {
+      console.warn('handleCapture called with empty image data');
+      setScanStatus('error');
+      setOcrDebugInfo({
+        rawText: '[ERROR] No image data received from camera',
+        confidence: 0, blocks: [], potentialTitles: [], numberMatch: null
+      });
+      return;
+    }
     setCapturedImage(imageData);
     setScanStatus('scanning');
     setOcrDebugInfo(null);
@@ -149,6 +159,12 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       } else {
         setScanResult(null);
         setScanStatus('not_found');
+        // Log failed scans so they appear in history
+        const ocrHint = ocrData.number || ocrData.name || 'Unknown';
+        addEntry({
+          cardId: '', cardName: `Scan: ${ocrHint}`, cardNumber: ocrData.number || '—',
+          cardImage: '', action: 'skipped', isFoil: false, quantity: 0
+        });
       }
       setShowCamera(false);
     } catch (err) {
@@ -159,11 +175,17 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       });
       setScanStatus('error');
       setShowCamera(false);
+      // Log error scans too
+      addEntry({
+        cardId: '', cardName: 'Scan error', cardNumber: '—',
+        cardImage: '', action: 'skipped', isFoil: false, quantity: 0
+      });
     }
-  }, [processImage, findMatches]);
+  }, [processImage, findMatches, addEntry]);
 
   const handleDirectCameraCapture = useCallback(async () => {
     try {
+      setScanStatus('scanning');
       const image = await CapacitorCamera.getPhoto({
         quality: 95, allowEditing: false,
         resultType: CameraResultType.Base64,
@@ -171,9 +193,13 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       });
       if (image.base64String) {
         handleCapture(`data:image/jpeg;base64,${image.base64String}`);
+      } else {
+        console.warn('Camera returned empty base64');
+        setScanStatus('idle');
       }
     } catch (err) {
       console.log('Camera cancelled:', err);
+      setScanStatus('idle');
     }
   }, [handleCapture, cards.length]);
 
@@ -202,12 +228,17 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           });
         }
         setScanStatus('saved');
+        // Show success toast with card info
+        if (scanResult) {
+          setSuccessToast({ cardName: scanResult.card.name, isFoil });
+          setTimeout(() => setSuccessToast(null), 2200);
+        }
         await loadCollection();
         setTimeout(() => {
           setScanResult(null);
           setCapturedImage(null);
           setScanStatus('idle');
-        }, 1500);
+        }, 1800);
       } else {
         setScanStatus('error');
       }
@@ -449,15 +480,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             </div>
           </div>
 
-          {/* Scanning overlay */}
-          {scanStatus === 'scanning' && (
-            <div className="scanning-overlay">
-              <div className="scanning-content">
-                <div className="scanning-spinner" />
-                <p>Analyzing card...</p>
-              </div>
-            </div>
-          )}
+          {/* Scanning handled by global process-overlay */}
         </div>
       )}
 
@@ -677,10 +700,27 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         )}
       </main>
 
-      {/* Save toast */}
-      {scanStatus === 'saved' && (
-        <div className="recent-scan-toast success">
-          ✅ Card added to collection!
+      {/* Processing overlay — visible during OCR/matching */}
+      {scanStatus === 'scanning' && (
+        <div className="process-overlay">
+          <div className="process-overlay-content">
+            <div className="process-spinner" />
+            <span className="process-text">Processing image…</span>
+          </div>
+        </div>
+      )}
+
+      {/* Success overlay — after saving to collection */}
+      {successToast && (
+        <div className="success-overlay">
+          <div className="success-overlay-content">
+            <svg className="success-check" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <span className="success-card-name">{successToast.cardName}</span>
+            <span className="success-label">added to collection{successToast.isFoil ? ' (foil)' : ''}</span>
+          </div>
         </div>
       )}
 

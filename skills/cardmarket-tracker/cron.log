@@ -1,0 +1,176 @@
+=== Sun Feb 22 16:43:39 CET 2026: Starting scraper for arcane ===
+🦋 Arcane Box Set Scraper - 2026-02-22 16:43
+URL: https://www.cardmarket.com/en/Riftbound/Products/Box-Sets/Arcane-Box-Set?sellerCountry=7&language=1
+Required Location: Germany
+
+🌐 Lade Seite...
+📊 Status: 200
+📦 Initiale Listings: 50
+
+🔍 Suche nach Load-More Button...
+❌ Fehler: ElementHandle.click: Timeout 30000ms exceeded.
+Call log:
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="spinner"></div> from <div class="loader small">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not stable
+    - retrying click action
+      - waiting 100ms
+    5 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="spinner"></div> from <div class="loader small">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 500ms
+    43 × waiting for element to be visible, enabled and stable
+       - element is not visible
+     - retrying click action
+       - waiting 500ms
+
+Traceback (most recent call last):
+  File "/Users/robert/.openclaw/workspace/skills/cardmarket-tracker/scraper.py", line 378, in <module>
+    main()
+  File "/Users/robert/.openclaw/workspace/skills/cardmarket-tracker/scraper.py", line 369, in main
+    count, floor = asyncio.run(scrape_product(product_key))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/robert/.openclaw/workspace/skills/cardmarket-tracker/scraper.py", line 133, in scrape_product
+    await btn.click()
+  File "/Users/robert/Library/Python/3.9/lib/python/site-packages/playwright/async_api/_generated.py", line 2157, in click
+    await self._impl_obj.click(
+  File "/Users/robert/Library/Python/3.9/lib/python/site-packages/playwright/_impl/_element_handle.py", line 143, in click
+    await self._channel.send(
+  File "/Users/robert/Library/Python/3.9/lib/python/site-packages/playwright/_impl/_connection.py", line 69, in send
+    return await self._connection.wrap_api_call(
+  File "/Users/robert/Library/Python/3.9/lib/python/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: ElementHandle.click: Timeout 30000ms exceeded.
+Call log:
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="spinner"></div> from <div class="loader small">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not stable
+    - retrying click action
+      - waiting 100ms
+    5 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="spinner"></div> from <div class="loader small">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 500ms
+    43 × waiting for element to be visible, enabled and stable
+       - element is not visible
+     - retrying click action
+       - waiting 500ms
+
+=== Sun Feb 22 16:44:18 CET 2026: Exited with code 1 ===
+=== Sun Feb 22 16:44:23 CET 2026: Starting scraper for arcane ===
+🦋 Arcane Box Set Scraper - 2026-02-22 16:44
+URL: https://www.cardmarket.com/en/Riftbound/Products/Box-Sets/Arcane-Box-Set?sellerCountry=7&language=1
+Required Location: Germany
+
+🌐 Lade Seite...
+📊 Status: 200
+📦 Initiale Listings: 50
+
+🔍 Suche nach Load-More Button...
+
+📜 Scrolle für mehr Content...
+
+📊 GESAMT: 50 Listings geladen
+✅ Erfolgreich geparst: 50 Listings
+   🇩🇪 Germany: 50
+   🌍 Other: 0
+
+💶 Floor-Price (nur DE): 188.70€
+✅ Gespeichert: Scrape #151 (50 DE Listings)
+
+🏁 FERTIG: 50 Listings, Floor: 188.70€
+=== Sun Feb 22 16:44:38 CET 2026: Exited with code 0 ===
+=== Sun Feb 22 17:43:39 CET 2026: Starting scraper for arcane ===
+🦋 Arcane Box Set Scraper - 2026-02-22 17:43
+URL: https://www.cardmarket.com/en/Riftbound/Products/Box-Sets/Arcane-Box-Set?sellerCountry=7&language=1
+Required Location: Germany
+
+🌐 Lade Seite...
+📊 Status: 200
+📦 Initiale Listings: 49
+
+🔍 Suche nach Load-More Button...
+
+📜 Scrolle für mehr Content...
+
+📊 GESAMT: 49 Listings geladen
+✅ Erfolgreich geparst: 49 Listings
+   🇩🇪 Germany: 49
+   🌍 Other: 0
+
+💶 Floor-Price (nur DE): 189.00€
+🚨 Verkaufsverdacht: MrHasBeen @ 188.70€
+✅ Gespeichert: Scrape #153 (49 DE Listings)
+
+🏁 FERTIG: 49 Listings, Floor: 189.00€
+=== Sun Feb 22 17:43:48 CET 2026: Exited with code 0 ===
+=== Sun Feb 22 18:43:49 CET 2026: Starting scraper for arcane ===
+🦋 Arcane Box Set Scraper - 2026-02-22 18:43
+URL: https://www.cardmarket.com/en/Riftbound/Products/Box-Sets/Arcane-Box-Set?sellerCountry=7&language=1
+Required Location: Germany
+
+🌐 Lade Seite...
+📊 Status: 200
+📦 Initiale Listings: 50
+
+🔍 Suche nach Load-More Button...
+
+📜 Scrolle für mehr Content...
+
+📊 GESAMT: 50 Listings geladen
+✅ Erfolgreich geparst: 50 Listings
+   🇩🇪 Germany: 50
+   🌍 Other: 0
+
+💶 Floor-Price (nur DE): 188.00€
+✅ Gespeichert: Scrape #155 (50 DE Listings)
+
+🏁 FERTIG: 50 Listings, Floor: 188.00€
+=== Sun Feb 22 18:44:06 CET 2026: Exited with code 0 ===
+=== Sun Feb 22 19:43:38 CET 2026: Starting scraper for arcane ===
+🦋 Arcane Box Set Scraper - 2026-02-22 19:43
+URL: https://www.cardmarket.com/en/Riftbound/Products/Box-Sets/Arcane-Box-Set?sellerCountry=7&language=1
+Required Location: Germany
+
+🌐 Lade Seite...
+📊 Status: 200
+📦 Initiale Listings: 49
+
+🔍 Suche nach Load-More Button...
+
+📜 Scrolle für mehr Content...
+
+📊 GESAMT: 49 Listings geladen
+✅ Erfolgreich geparst: 49 Listings
+   🇩🇪 Germany: 49
+   🌍 Other: 0
+
+💶 Floor-Price (nur DE): 189.00€
+🚨 Verkaufsverdacht: burle @ 188.00€
+✅ Gespeichert: Scrape #157 (49 DE Listings)
+
+🏁 FERTIG: 49 Listings, Floor: 189.00€
+=== Sun Feb 22 19:43:53 CET 2026: Exited with code 0 ===
