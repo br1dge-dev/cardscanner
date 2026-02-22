@@ -557,42 +557,6 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         </div>
       )}
 
-      {/* Scan failure overlay */}
-      {(scanStatus === 'not_found' || scanStatus === 'error') && (
-        <div className="scan-status-overlay">
-          <div className="scan-status-content scan-status-detailed">
-            <div className="scan-status-icon">{scanStatus === 'error' ? '⚠️' : '❓'}</div>
-            <h3>{scanStatus === 'error' ? 'Scan failed' : 'No card recognized'}</h3>
-            {ocrDebugInfo && (
-              <div className="scan-diagnostics">
-                <div className="diag-section">
-                  <span className="diag-label">OCR Text:</span>
-                  <pre className="diag-text">{ocrDebugInfo.rawText || '(nothing detected)'}</pre>
-                </div>
-                {ocrDebugInfo.numberMatch && (
-                  <div className="diag-section">
-                    <span className="diag-label">Number found:</span>
-                    <span className="diag-value">{ocrDebugInfo.numberMatch}</span>
-                  </div>
-                )}
-                <div className="diag-section">
-                  <span className="diag-label">Confidence:</span>
-                  <span className="diag-value">{(ocrDebugInfo.confidence * 100).toFixed(0)}%</span>
-                </div>
-              </div>
-            )}
-            {capturedImage && <img src={capturedImage} alt="Scanned" className="scan-thumb" />}
-            <div className="scan-status-actions">
-              <button className="btn-primary" onClick={() => { setScanStatus('idle'); handleDirectCameraCapture(); }}>
-                🔄 Try Again
-              </button>
-              <button className="btn-secondary" onClick={() => { setScanStatus('idle'); setOcrDebugInfo(null); setCapturedImage(null); }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 
@@ -809,13 +773,43 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           setShowResult(false);
         }}>
           <div className="success-overlay-content">
-            <svg className="success-check" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
+            <svg className="success-check" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-4"/>
             </svg>
             <span className="success-card-name">{successToast.cardName}</span>
             <span className="success-label">added to collection{successToast.isFoil ? ' (foil)' : ''}</span>
             <span className="success-dismiss">tap to dismiss</span>
+          </div>
+        </div>
+      )}
+
+      {/* Scan failure overlay — global, works from any view */}
+      {(scanStatus === 'not_found' || scanStatus === 'error') && !successToast && (
+        <div className="scan-status-overlay">
+          <div className="scan-status-content scan-status-detailed">
+            <div className="scan-status-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: scanStatus === 'error' ? '#f87171' : 'var(--accent-gold)' }}>
+                {scanStatus === 'error' ? (
+                  <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>
+                ) : (
+                  <><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></>
+                )}
+              </svg>
+            </div>
+            <h3>{scanStatus === 'error' ? 'Scan failed' : 'No match found'}</h3>
+            {ocrDebugInfo && ocrDebugInfo.numberMatch && (
+              <p className="scan-fail-hint">Detected: {ocrDebugInfo.numberMatch}</p>
+            )}
+            {capturedImage && <img src={capturedImage} alt="Scanned" className="scan-thumb" />}
+            <div className="scan-status-actions">
+              <button className="btn-primary" onClick={() => { setScanStatus('idle'); handleDirectCameraCapture(); }}>
+                Scan again
+              </button>
+              <button className="btn-secondary" onClick={() => { setScanStatus('idle'); setOcrDebugInfo(null); setCapturedImage(null); }}>
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
       )}
