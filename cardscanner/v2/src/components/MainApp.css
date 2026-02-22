@@ -288,7 +288,7 @@
   opacity: 0.5;
 }
 
-/* Scan Button – Central, legendary */
+/* Scan Button – Central */
 .home-scan-row {
   margin-bottom: 16px;
 }
@@ -298,56 +298,69 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 18px 24px;
-  background: linear-gradient(135deg, rgba(201, 168, 76, 0.1), rgba(220, 120, 40, 0.08));
-  border: 1px solid rgba(201, 168, 76, 0.3);
+  padding: 20px 24px;
+  background: var(--bg-card);
+  border: 1px solid transparent;
   border-radius: 16px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   font-family: inherit;
-  overflow: hidden;
-  isolation: isolate;
+  overflow: visible;
 }
 .scan-btn-legendary:active {
   transform: scale(0.97);
-  border-color: var(--accent-gold);
 }
 
-/* Outer animated glow ring */
+/* Animated border glow — runs along the edge */
 .scan-btn-glow {
   position: absolute;
-  inset: -2px;
-  border-radius: 18px;
+  inset: -1px;
+  border-radius: 17px;
   pointer-events: none;
   z-index: 0;
+  overflow: hidden;
 }
-.scan-btn-glow::before,
-.scan-btn-glow::after {
+/* Register the custom property for animation (must be before usage) */
+@property --scan-glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.scan-btn-glow::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--scan-glow-angle, 0deg),
+    transparent 0%,
+    transparent 50%,
+    rgba(220, 120, 40, 0.5) 65%,
+    rgba(201, 168, 76, 0.7) 75%,
+    rgba(220, 120, 40, 0.5) 85%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: scanBorderRotate 3.5s linear infinite;
 }
-.scan-btn-glow::before {
-  box-shadow:
-    0 0 12px 1px rgba(220, 120, 40, 0.25),
-    0 0 24px 2px rgba(201, 168, 76, 0.1);
-  animation: scanGlow1 3s ease-in-out infinite;
-}
+/* Soft outer glow for depth */
 .scan-btn-glow::after {
-  box-shadow:
-    0 0 8px 1px rgba(201, 168, 76, 0.2),
-    0 0 20px 2px rgba(220, 120, 40, 0.08);
-  animation: scanGlow2 4.5s ease-in-out infinite;
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 20px;
+  box-shadow: 0 0 12px 1px rgba(220, 120, 40, 0.12);
+  animation: scanOuterGlow 3.5s ease-in-out infinite;
 }
-@keyframes scanGlow1 {
+@keyframes scanBorderRotate {
+  to { --scan-glow-angle: 360deg; }
+}
+@keyframes scanOuterGlow {
   0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-@keyframes scanGlow2 {
-  0%, 100% { opacity: 0.6; }
-  35% { opacity: 0.2; }
-  70% { opacity: 0.9; }
+  50% { opacity: 0.8; }
 }
 
 .scan-btn-inner {
@@ -508,7 +521,11 @@
 .history-badge {
   font-size: 12px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }
+.history-badge svg { flex-shrink: 0; }
 .history-badge.added { color: #22c55e; }
 .history-badge.removed { color: #ef4444; }
 .history-badge.skipped { color: var(--accent-gold); }
