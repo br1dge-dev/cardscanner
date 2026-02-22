@@ -126,20 +126,31 @@ async def scrape_product(product_key: str):
             print("\n🔍 Suche nach Load-More Button...")
             for selector in load_more_selectors:
                 for attempt in range(10):
-                    btn = await page.query_selector(selector)
-                    if btn:
-                        visible = await btn.is_visible()
-                        if visible:
-                            await btn.click()
-                            await page.wait_for_timeout(2000)
-                            new_count = len(await page.query_selector_all('.article-row'))
-                            if new_count <= initial_count:
+                    try:
+                        btn = await page.query_selector(selector)
+                        if btn:
+                            visible = await btn.is_visible()
+                            if visible:
+                                # Wait for any spinner to disappear before clicking
+                                try:
+                                    await page.wait_for_selector('.spinner, .loader, .loading', state='hidden', timeout=5000)
+                                except:
+                                    pass  # Spinner might not exist
+                                # Use force=True to bypass spinner interception
+                                await btn.click(force=True)
+                                await page.wait_for_timeout(2000)
+                                new_count = len(await page.query_selector_all('.article-row'))
+                                if new_count <= initial_count:
+                                    break
+                                initial_count = new_count
+                            else:
                                 break
-                            initial_count = new_count
                         else:
                             break
-                    else:
-                        break
+                    except Exception as e:
+                        print(f"   ⚠️ Click failed (attempt {attempt+1}): {str(e)[:50]}")
+                        await page.wait_for_timeout(1000)
+                        continue
 
             # Scrollen
             print("\n📜 Scrolle für mehr Content...")
