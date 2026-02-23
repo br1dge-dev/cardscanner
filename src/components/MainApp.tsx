@@ -894,6 +894,8 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
           debugMode={debugMode}
           marketplace={marketplace}
           userData={userData}
+          isTorchOn={isTorchOn}
+          onTorchToggle={handleTorchToggle}
         />
       )}
 
