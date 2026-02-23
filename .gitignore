@@ -1,44 +1,39 @@
-# ==========================================
-# OpenClaw workspace files (private!)
-# ==========================================
-/AGENTS.md
-/SOUL.md
-/USER.md
-/IDENTITY.md
-/MEMORY.md
-/TOOLS.md
-/HEARTBEAT.md
-/BOOTSTRAP.md
-/TODO.md
-/.openclaw/
-/memory/
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# ==========================================
-# Secrets
-# ==========================================
-**/.env
+node_modules
+dist
+dist-ssr
+*.local
 
-# ==========================================
-# Databases (keep local only)
-# ==========================================
-/cardmarket.db
-/backups/
-
-# ==========================================
-# Root-level junk from old experiments
-# ==========================================
-/node_modules/
-/app.js
-/index.html
-/test-*.js
-/package.json
-/package-lock.json
-/eng.traineddata
-/projects/
-/arcane_floor_trend.png
-/spiritforged_sales.png
-
-# ==========================================
-# OS junk
-# ==========================================
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# iOS
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+
+# Environment / Secrets
+.env
+.env.*
+
+# Capacitor
+ios/App/App/public/
+android/app/src/main/assets/public/
