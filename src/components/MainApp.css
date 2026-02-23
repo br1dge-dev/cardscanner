@@ -528,6 +528,28 @@
   color: var(--text-muted);
 }
 
+/* Torch tile — off / on states */
+.action-torch .action-icon-wrap {
+  background: rgba(201, 168, 76, 0.08);
+  color: var(--accent-gold);
+  transition: background 0.25s, box-shadow 0.25s;
+}
+.action-torch--on {
+  border-color: rgba(253, 224, 71, 0.45);
+  background: rgba(253, 224, 71, 0.07);
+}
+.action-torch--on .action-icon-wrap {
+  background: rgba(253, 224, 71, 0.22);
+  box-shadow: 0 0 14px rgba(253, 224, 71, 0.35);
+  color: #fde047;
+}
+.action-torch--on .action-label {
+  color: #fde047;
+}
+.action-torch--on .action-hint {
+  color: rgba(253, 224, 71, 0.7);
+}
+
 /* Section Header */
 .section-header {
   display: flex;

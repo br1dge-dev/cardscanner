@@ -11,6 +11,7 @@ import { useCardMatching } from '../hooks/useCardMatching';
 import { useScanHistory } from '../hooks/useScanHistory';
 import { dotGGClient } from '../api/dotgg';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Torch } from '@capawesome/capacitor-torch';
 import type { User, CardMatch, Game, UserData } from '../types';
 import './MainApp.css';
 
@@ -54,6 +55,9 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [successToast, setSuccessToast] = useState<{ cardName: string; isFoil: boolean } | null>(null);
   const [savingOverlay, setSavingOverlay] = useState(false); // "Adding to collection..." overlay
   const [showResult, setShowResult] = useState(false); // delays CardResult reveal for smooth transition
+
+  // Torch / flashlight
+  const [isTorchOn, setIsTorchOn] = useState(false);
 
   // Debug & preferences
   const [debugMode, setDebugMode] = useState(false);
@@ -109,15 +113,25 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   useEffect(() => { localStorage.setItem('cardscanner_game', currentGame); }, [currentGame]);
   useEffect(() => { localStorage.setItem('cardscanner_marketplace', marketplace); }, [marketplace]);
 
-  // Auto-dismiss success toast after 4.5s
+  // Success toast countdown (3 → 2 → 1 → close)
+  const [successCountdown, setSuccessCountdown] = useState(3);
+
   useEffect(() => {
     if (!successToast) return;
-    const timer = setTimeout(() => {
-      setSuccessToast(null);
-      setScanStatus('idle');
-      setShowResult(false);
-    }, 4500);
-    return () => clearTimeout(timer);
+    setSuccessCountdown(3);
+    const interval = setInterval(() => {
+      setSuccessCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setSuccessToast(null);
+          setScanStatus('idle');
+          setShowResult(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
   }, [successToast]);
 
   const loadCollection = useCallback(async () => {
@@ -302,6 +316,20 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     setShowResult(false);
   }, [scanResult, addEntry]);
 
+  const handleTorchToggle = useCallback(async () => {
+    try {
+      if (isTorchOn) {
+        await Torch.disable();
+        setIsTorchOn(false);
+      } else {
+        await Torch.enable();
+        setIsTorchOn(true);
+      }
+    } catch (err) {
+      console.error('Torch error:', err);
+    }
+  }, [isTorchOn]);
+
   // ---- Time formatting ----
   const timeAgo = (ts: number) => {
     const diff = Date.now() - ts;
@@ -398,16 +426,19 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
 
       {/* Quick Actions */}
       <div className="home-actions anim-fade-in-delay-3">
-        <button className="action-tile action-library" onClick={() => setViewMode('collection')}>
+        <button className={`action-tile action-torch ${isTorchOn ? 'action-torch--on' : ''}`} onClick={handleTorchToggle}>
           <div className="action-icon-wrap">
+            {/* Flashlight beam icon */}
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="20" height="18" rx="2"/>
-              <path d="M2 8h20"/>
-              <path d="M9 3v5"/>
+              <path d="M8 2h8l2 6H6L8 2z"/>
+              <path d="M6 8l-2 14h16L18 8"/>
+              <line x1="12" y1="12" x2="12" y2="18"/>
+              <line x1="9"  y1="13.5" x2="9"  y2="17"/>
+              <line x1="15" y1="13.5" x2="15" y2="17"/>
             </svg>
           </div>
-          <span className="action-label">Library</span>
-          <span className="action-hint">{uniqueCount} unique</span>
+          <span className="action-label">Torch</span>
+          <span className="action-hint">{isTorchOn ? 'On — tap off' : 'Off'}</span>
         </button>
         <button className="action-tile action-setup" onClick={() => setViewMode('settings')}>
           <div className="action-icon-wrap">
@@ -778,7 +809,11 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             </svg>
             <span className="success-card-name">{successToast.cardName}</span>
             <span className="success-label">added to collection{successToast.isFoil ? ' (foil)' : ''}</span>
-            <span className="success-dismiss">tap to dismiss</span>
+            <span className="success-dismiss">
+              {successCountdown > 0
+                ? `Closing in ${successCountdown}…`
+                : 'tap to dismiss'}
+            </span>
           </div>
         </div>
       )}
