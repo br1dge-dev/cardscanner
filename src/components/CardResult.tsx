@@ -15,6 +15,8 @@ interface CardResultProps {
   debugMode?: boolean;
   marketplace?: 'cardmarket' | 'tcgplayer';
   userData?: UserData | null;
+  isTorchOn?: boolean;
+  onTorchToggle?: () => void;
 }
 
 // Normalize "1"/true/etc to boolean
@@ -73,7 +75,9 @@ export const CardResult: React.FC<CardResultProps> = ({
   isSaving = false,
   debugMode = false,
   marketplace = 'cardmarket',
-  userData = null
+  userData = null,
+  isTorchOn = false,
+  onTorchToggle,
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [showCapturedImage, setShowCapturedImage] = useState(false);
@@ -167,6 +171,22 @@ export const CardResult: React.FC<CardResultProps> = ({
   return (
     <div className="card-result-overlay" onClick={onClose}>
       <div className={`card-result-modal ${glowClass}`} onClick={e => e.stopPropagation()}>
+        {/* Torch toggle — top-right, below X button */}
+        {onTorchToggle && (
+          <button
+            className={`card-torch-btn ${isTorchOn ? 'card-torch-btn--on' : ''}`}
+            onClick={onTorchToggle}
+            aria-label={isTorchOn ? 'Turn off torch' : 'Turn on torch'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 2h8l2 6H6L8 2z"/>
+              <path d="M6 8l-2 14h16L18 8"/>
+              <line x1="12" y1="12" x2="12" y2="18"/>
+              <line x1="9"  y1="13.5" x2="9"  y2="17"/>
+              <line x1="15" y1="13.5" x2="15" y2="17"/>
+            </svg>
+          </button>
+        )}
         <div className="card-result-header">
           <div className={`match-badge ${confidence < 0.7 ? 'low-confidence' : ''}`}>
             <Check size={14} />

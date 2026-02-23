@@ -55,6 +55,36 @@
   overflow-y: auto;
   animation: slideUp 0.3s ease;
   border-top: 2px solid var(--border);
+  position: relative;
+}
+
+/* Torch button — top-right, below X */
+.card-torch-btn {
+  position: absolute;
+  top: 60px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(201, 168, 76, 0.07);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 2;
+}
+.card-torch-btn:active {
+  transform: scale(0.92);
+}
+.card-torch-btn--on {
+  background: rgba(253, 224, 71, 0.18);
+  border-color: rgba(253, 224, 71, 0.45);
+  color: #fde047;
+  box-shadow: 0 0 10px rgba(253, 224, 71, 0.3);
 }
 
 .card-result-modal.no-match {
