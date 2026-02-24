@@ -135,6 +135,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   }, [successToast]);
 
   const loadCollection = useCallback(async () => {
+    if (!cards.length) return;
     const result = await dotGGClient.getUserData(user);
     if (result.success && result.data) {
       if (result.data.user?.nickname) setNickname(result.data.user.nickname);
