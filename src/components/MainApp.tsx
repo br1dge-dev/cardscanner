@@ -66,7 +66,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
     return (localStorage.getItem('cardscanner_marketplace') as 'cardmarket' | 'tcgplayer') || 'cardmarket';
   });
 
-  const { cards, isLoading: cardsLoading, error: cardsError } = useCards();
+  const { cards, isLoading: cardsLoading, pricesRefreshed, error: cardsError } = useCards();
   const { processImage, isProcessing } = useNativeOCR();
   const { findMatches, isMatching } = useCardMatching(cards);
   const { history, addEntry, totalScans } = useScanHistory();
@@ -165,6 +165,9 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   }, [user, cards, marketplace]);
 
   useEffect(() => { loadCollection(); }, [loadCollection]);
+
+  // Re-calculate collection value once live prices arrive
+  useEffect(() => { if (pricesRefreshed) loadCollection(); }, [pricesRefreshed]);
 
   const handleGameSelect = (game: Game) => {
     const g = SUPPORTED_GAMES.find(g => g.id === game);
