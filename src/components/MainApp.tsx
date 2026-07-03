@@ -759,7 +759,7 @@ export const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
         {cardsLoading ? (
           <div className="loading-state">
             <div className="spinner-large" />
-            <p>Loading {currentGame} cards...</p>
+            <p>Syncing latest prices…</p>
           </div>
         ) : cardsError ? (
           <div className="error-state">

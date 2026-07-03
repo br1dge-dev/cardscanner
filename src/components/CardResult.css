@@ -61,10 +61,10 @@
 /* Torch button — top-right, below X */
 .card-torch-btn {
   position: absolute;
-  top: 60px;
+  top: 66px;
   right: 18px;
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: rgba(201, 168, 76, 0.07);

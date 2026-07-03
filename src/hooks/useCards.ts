@@ -1,15 +1,20 @@
 /**
  * useCards Hook - Load and manage card database
  *
- * Two-phase loading:
- * 1. Immediately load bundled cards.json (fast, works offline)
- * 2. In background, fetch fresh prices from DotGG API and merge silently
+ * Loading sequence (behind splash / loading screen):
+ * 1. Load bundled cards.json (fast, works offline)
+ * 2. Fetch live prices from DotGG API via CapacitorHttp (native, no CORS)
+ * 3. Merge prices → mark loading complete → app transitions to home
+ *
+ * A 6s timeout ensures the app never hangs if the API is slow/down.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { CapacitorHttp } from '@capacitor/core';
 import type { Card } from '../types';
 
 const CARDS_URL = '/cards.json';
 const DOTGG_API_URL = 'https://api.dotgg.gg/cgfw/getcards?game=riftbound';
+const PRICE_REFRESH_TIMEOUT_MS = 6000;
 
 // Price fields we refresh from the API
 type PriceFields = Pick<Card,
@@ -62,7 +67,7 @@ export function useCards() {
     abortRef.current?.abort();
 
     try {
-      // ── Phase 1: Load bundled cards.json immediately ──────────────────────
+      // ── Phase 1: Load bundled cards.json ──────────────────────────────────
       const response = await fetch(CARDS_URL);
       if (!response.ok) throw new Error(`Failed to load cards: ${response.status}`);
 
@@ -71,40 +76,61 @@ export function useCards() {
 
       console.log(`[useCards] Phase 1: loaded ${normalizedCards.length} cards from bundle`);
       setCards(normalizedCards);
-      setIsLoading(false); // Loading screen done — app is usable now
 
-      // ── Phase 2: Refresh prices from API in background ───────────────────
+      // ── Phase 2: Refresh prices via CapacitorHttp (native, no CORS) ──────
+      // Loading screen stays visible until prices arrive or timeout fires.
       const ac = new AbortController();
       abortRef.current = ac;
 
-      fetch(DOTGG_API_URL, { signal: ac.signal })
-        .then(res => {
-          if (!res.ok) throw new Error(`API responded ${res.status}`);
-          return res.json();
-        })
-        .then((apiCards: Record<string, unknown>[]) => {
-          // Build a price map: id → PriceFields
-          const priceMap = new Map<string, PriceFields>();
-          for (const raw of apiCards) {
-            if (typeof raw.id === 'string') {
-              priceMap.set(raw.id, extractPrices(raw));
-            }
-          }
+      const finishLoading = () => {
+        if (!ac.signal.aborted) setIsLoading(false);
+      };
 
-          setCards(prev => prev.map(card => {
-            const fresh = priceMap.get(card.id);
-            return fresh ? { ...card, ...fresh } : card;
-          }));
+      // Safety timeout — never block the app for more than 6s
+      const timeout = setTimeout(() => {
+        console.warn('[useCards] Price refresh timed out — proceeding with bundled prices');
+        ac.abort();
+        finishLoading();
+      }, PRICE_REFRESH_TIMEOUT_MS);
 
-          setPricesRefreshed(true);
-          console.log(`[useCards] Phase 2: prices refreshed for ${priceMap.size} cards`);
-        })
-        .catch(err => {
-          if (err.name !== 'AbortError') {
-            // Non-fatal — bundled prices are still valid
-            console.warn('[useCards] Price refresh failed (using bundled prices):', err.message);
+      try {
+        const apiResponse = await CapacitorHttp.get({ url: DOTGG_API_URL });
+
+        if (ac.signal.aborted) return; // timeout already fired
+
+        if (apiResponse.status !== 200) {
+          throw new Error(`API responded ${apiResponse.status}`);
+        }
+
+        const apiCards: Record<string, unknown>[] =
+          typeof apiResponse.data === 'string'
+            ? JSON.parse(apiResponse.data)
+            : apiResponse.data;
+
+        // Build a price map: id → PriceFields
+        const priceMap = new Map<string, PriceFields>();
+        for (const raw of apiCards) {
+          if (typeof raw.id === 'string') {
+            priceMap.set(raw.id, extractPrices(raw));
           }
-        });
+        }
+
+        setCards(prev => prev.map(card => {
+          const fresh = priceMap.get(card.id);
+          return fresh ? { ...card, ...fresh } : card;
+        }));
+
+        setPricesRefreshed(true);
+        console.log(`[useCards] Phase 2: prices refreshed for ${priceMap.size} cards`);
+      } catch (err) {
+        if (!ac.signal.aborted) {
+          console.warn('[useCards] Price refresh failed (using bundled prices):',
+            err instanceof Error ? err.message : err);
+        }
+      } finally {
+        clearTimeout(timeout);
+        finishLoading();
+      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load cards';
