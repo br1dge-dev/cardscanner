@@ -9,9 +9,8 @@ android {
 
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
-    implementation project(':capacitor-community-http')
     implementation project(':capacitor-camera')
-    implementation project(':pantrist-capacitor-plugin-ml-kit-text-recognition')
+    implementation project(':capawesome-capacitor-torch')
 
 }
 

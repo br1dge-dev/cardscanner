@@ -2,11 +2,8 @@
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 
-include ':capacitor-community-http'
-project(':capacitor-community-http').projectDir = new File('../node_modules/@capacitor-community/http/android')
-
 include ':capacitor-camera'
 project(':capacitor-camera').projectDir = new File('../node_modules/@capacitor/camera/android')
 
-include ':pantrist-capacitor-plugin-ml-kit-text-recognition'
-project(':pantrist-capacitor-plugin-ml-kit-text-recognition').projectDir = new File('../node_modules/@pantrist/capacitor-plugin-ml-kit-text-recognition/android')
+include ':capawesome-capacitor-torch'
+project(':capawesome-capacitor-torch').projectDir = new File('../node_modules/@capawesome/capacitor-torch/android')
